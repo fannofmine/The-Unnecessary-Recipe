@@ -1,0 +1,2280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Unnecessary Recipe Database v1.0 (Offline Mode)</title>
+    <!-- Tailwind CSS CDN for minimalist styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS to enhance the early-internet, codey, minimalistic aesthetic */
+        body {
+            font-family: 'Courier New', Courier, monospace; /* Early internet font */
+            background-color: #f8f8f8; /* Off-white background */
+            color: #333;
+            line-height: 1.5;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #app-container {
+            max-width: 900px;
+            width: 100%;
+            background-color: #ffffff; /* White background */
+            border: 1px solid #ccc; /* Simple border */
+            border-radius: 8px; /* Slightly rounded corners */
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 80vh;
+        }
+        header {
+            border-bottom: 1px dashed #ccc; /* Dashed line for separation */
+            padding: 1rem 1.5rem;
+            background-color: #f0f0f0; /* Light gray header */
+            position: relative;
+        }
+        nav {
+            padding: 1rem 1.5rem;
+            background-color: #eaeaea; /* Slightly darker nav */
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .main-content {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden; /* Prevent inner scrollbars from messing up layout */
+        }
+        #recipe-list-container {
+            width: 300px; /* Fixed width for the list */
+            border-right: 1px dashed #ccc;
+            overflow-y: auto; /* Scrollable list */
+            padding: 1rem;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        #recipe-detail-container {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto; /* Scrollable detail view */
+            position: relative; /* For loading overlay */
+        }
+        .recipe-list-item {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin-bottom: 5px;
+            background-color: #fff;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.1s ease-in-out;
+            font-size: 0.9em;
+            color: #444;
+            white-space: nowrap; /* Prevent title wrapping */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Show ellipsis for truncated text */
+        }
+        .recipe-list-item:hover, .recipe-list-item.active {
+            background-color: #e0e7ff; /* Light blue on hover/active */
+            border-color: #a7b7ff; /* Darker blue border */
+            box-shadow: 0 0 5px rgba(100, 149, 237, 0.3); /* Subtle glow */
+        }
+        .recipe-detail h2 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            color: #000;
+        }
+        .recipe-detail h3 {
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            color: #555;
+        }
+        .recipe-detail ul, .recipe-detail ol {
+            list-style-type: disc; /* Default disc for unordered */
+            padding-left: 25px;
+            margin-bottom: 15px;
+        }
+        .recipe-detail ol {
+            list-style-type: decimal; /* Decimal for ordered */
+        }
+        .recipe-detail li {
+            margin-bottom: 5px;
+        }
+        .recipe-detail pre {
+            background-color: #f9f9f9;
+            border: 1px dashed #ddd;
+            padding: 10px;
+            overflow-x: auto;
+            white-space: pre-wrap; /* Wrap long lines */
+            word-wrap: break-word;
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 15px;
+            border-radius: 4px;
+        }
+        .search-input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            width: 100%;
+            max-width: 250px;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2em;
+            color: #555;
+            z-index: 10;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #333;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #app-container {
+                flex-direction: column;
+                min-height: unset;
+                height: auto;
+            }
+            .main-content {
+                flex-direction: column;
+            }
+            #recipe-list-container {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px dashed #ccc;
+                max-height: 40vh; /* Limit height for mobile list */
+            }
+            #recipe-detail-container {
+                padding: 1rem;
+            }
+            nav {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .search-input {
+                max-width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <header>
+            <h1 class="text-2xl font-bold text-center">The Unnecessary Recipe Database v1.0</h1>
+            <p class="text-center text-sm mt-2">
+                <span class="text-red-500">//</span> If you're here, you're either desperate or lost. Probably both.
+            </p>
+        </header>
+
+        <nav>
+            <input type="text" id="search-input" class="search-input" placeholder="> SEARCH_RECIPE_NAME.TXT">
+            <select id="category-filter" class="search-input">
+                <option value="all">ALL_CATEGORIES</option>
+                <option value="breakfast">BREAKFAST_PROTOCOLS</option>
+                <option value="lunch">LUNCH_ALGORITHMS</option>
+                <option value="dinner">DINNER_SCHEMAS</option>
+                <option value="dessert">DESSERT_FUNCTIONS</option>
+                <option value="snack">SNACK_MODULES</option>
+            </select>
+        </nav>
+
+        <div class="main-content">
+            <div id="recipe-list-container">
+                <p class="text-sm mb-4 text-gray-600">
+                    <span class="text-green-600">//</span> FILE_LISTING_BEGIN
+                </p>
+                <div id="recipe-list">
+                    <!-- Recipe titles will be loaded here by JavaScript -->
+                    <div id="list-loading-overlay" class="loading-overlay">
+                        <div class="spinner"></div>
+                        <p>LOADING_LOCAL_DATA. STAND_BY...</p>
+                    </div>
+                </div>
+                <p class="text-sm mt-4 text-gray-600">
+                    <span class="text-green-600">//</span> FILE_LISTING_END
+                </p>
+            </div>
+
+            <div id="recipe-detail-container">
+                <!-- Recipe details will be loaded here by JavaScript -->
+                <div id="initial-message" class="text-center text-gray-500 mt-20">
+                    <p class="text-xl">
+                        <span class="text-blue-500">//</span> SELECT_RECIPE_FROM_LEFT_PANEL_TO_VIEW_DETAILS
+                    </p>
+                    <p class="mt-4 text-sm">
+                        <span class="text-yellow-500">//</span> WARNING: RESULTS_MAY_VARY. QUALITY_NOT_GUARANTEED.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- NO FIREBASE REQUIRED FOR THIS VERSION ---
+
+        let allRecipes = []; // Store all fetched recipes
+        let currentActiveRecipeElement = null; // To keep track of the currently selected recipe in the list
+
+        // DOM Elements
+        const recipeListDiv = document.getElementById('recipe-list');
+        const recipeDetailDiv = document.getElementById('recipe-detail-container');
+        const searchInput = document.getElementById('search-input');
+        const categoryFilter = document.getElementById('category-filter');
+        const initialMessage = document.getElementById('initial-message');
+        const listLoadingOverlay = document.getElementById('list-loading-overlay'); // Get the loading overlay directly
+
+        // Hardcoded satirical recipes (around 60 recipes)
+        const initialRecipes = [
+            {
+                id: 'burnt_toast_protocol',
+                title: 'Burnt Toast Protocol (Advanced)',
+                category: 'breakfast',
+                ingredients: [
+                    '1-2 slices of bread (preferably white, for maximum char visibility)',
+                    '1 toaster (any model, as long as it has a "dark" setting or a faulty timer)',
+                    'Your dwindling patience'
+                ],
+                instructions: [
+                    'Locate bread. If moldy, consider it "aged." If not, congratulations on your recent grocery run.',
+                    'Insert bread into toaster slots. Ensure proper alignment for even, disastrous burning.',
+                    'Set toaster to the darkest possible setting. If it has a "bagel" button, press it for extra confusion.',
+                    'Engage toaster. Walk away. Forget about it. This is crucial for optimal results.',
+                    'Upon detection of smoke, or the persistent scent of regret, return to toaster. Observe the transformation from mundane carb to carbonized relic.',
+                    'Extract toast. Attempt to scrape off the black bits. Realize the futility of it all.',
+                    'Serve with a side of existential dread. No butter needed, the bitterness is self-sufficient.'
+                ],
+                notes: 'Achieving perfect burnt toast is an art form, mostly because it requires precisely the right amount of negligence. Good job.'
+            },
+            {
+                id: 'microwave_pasta_algorithm',
+                title: 'Microwave Pasta Algorithm (For the Truly Desperate)',
+                category: 'dinner',
+                ingredients: [
+                    '1 serving pasta (any shape, it will all end up the same)',
+                    'Water (tap will do, unless you\'re feeling fancy with filtered despair)',
+                    'Salt (optional, for adding insult to injury)',
+                    'A bowl (microwave-safe, unless you enjoy chaotic explosions)'
+                ],
+                instructions: [
+                    'Place pasta in bowl. Do not measure. Eyeball it. Life is too short for precision.',
+                    'Add enough water to cover pasta. Too much, and you\'ll have soup. Too little, and you\'ll have crunchy bits of sadness.',
+                    'Add a pinch of salt. Or don\'t. It won\'t make much difference in the grand scheme of things.',
+                    'Microwave on high for recommended time on package, plus approximately 3-5 minutes. Or until it looks "done," which is a subjective and often misleading term.',
+                    'Carefully remove bowl. It will be hot. Consider this a warning from the universe.',
+                    'Drain water. Or don\'t. Liquid starch is a carb, right?',
+                    'Consume directly from bowl while contemplating the choices that led you here.'
+                ],
+                notes: 'This recipe prioritizes speed over dignity. You\'re welcome. Or not.'
+            },
+            {
+                id: 'sad_desk_salad',
+                title: 'Sad Desk Salad (A Glimpse into the Abyss)',
+                category: 'lunch',
+                ingredients: [
+                    'A handful of pre-washed greens (likely on their last leg)',
+                    '1/2 tomato (the other half presumably used for something slightly more ambitious last week)',
+                    'A few cucumber slices (for texture, or just because they were there)',
+                    'Whatever dressing you have that isn\'t expired (or is only slightly expired)',
+                    'Optional: A single crouton (for ironic crunch)'
+                ],
+                instructions: [
+                    'Retrieve greens from fridge. Observe their wilting state. Accept it.',
+                    'Chop tomato. No need for perfection. This isn\'t a Michelin star, it\'s lunch.',
+                    'Arrange greens, tomato, and cucumber in a bowl. Call it "plating" if it makes you feel better.',
+                    'Drizzle dressing over. Don\'t overdo it, or you\'ll drown out the taste of disappointment.',
+                    'Add the optional single crouton. It serves as a reminder of better days.',
+                    'Eat at your desk while questioning all your life choices. Savor the silence, or the ringing in your ears.'
+                ],
+                notes: 'Nutritious, probably. Fulfilling? Debatable. But hey, it\'s green.'
+            },
+            {
+                id: 'artisanal_instant_coffee',
+                title: 'Artisanal Instant Coffee (Mockery in a Mug)',
+                category: 'breakfast',
+                ingredients: [
+                    '1-2 teaspoons instant coffee (the cheapest kind, for authenticity)',
+                    'Boiling water (or nearly boiling, if you lack commitment)',
+                    'Sugar (if you\'re still clinging to fleeting joys)',
+                    'Milk/Creamer (if you believe in masking reality)'
+                ],
+                instructions: [
+                    'Find your most aesthetically pleasing mug. The one you use for guests. This is ironic.',
+                    'Spoon instant coffee into mug. Try to ignore the chemical scent.',
+                    'Add a small splash of cold water. Stir into a "paste." This makes it seem like you\'re doing something important.',
+                    'Pour boiling water into mug. Observe the subtle swirling. Contemplate the transient nature of foam.',
+                    'Add sugar and/or creamer. Stir, or don\'t. It\'s just coffee.',
+                    'Drink slowly, pretending it\'s a fancy latte. Accept your fate.'
+                ],
+                notes: 'A masterpiece of low effort. Enjoy the delusion.'
+            },
+            {
+                id: 'egg_in_hole_of_despair',
+                title: 'Egg-in-a-Hole of Despair',
+                category: 'breakfast',
+                ingredients: [
+                    '1 slice of bread (any kind, the void doesn\'t discriminate)',
+                    '1 egg (preferably one that hasn\'t seen too much of the outside world)',
+                    'Butter (or margarine, if you\'ve truly given up)',
+                    'A circular cookie cutter, or a knife (for creating the "hole")'
+                ],
+                instructions: [
+                    'Melt butter in a non-stick pan over medium heat. Don\'t burn it. That\'s a different recipe.',
+                    'Use your chosen tool to cut a hole in the center of the bread slice. Try not to think about the missing piece.',
+                    'Place bread in the pan. Resist the urge to poke it.',
+                    'Crack egg directly into the hole. Try to keep the yolk intact. If it breaks, well, that\'s life.',
+                    'Cook for 2-3 minutes per side, or until egg whites are set and yolk is to your preferred level of runny despair. Flip carefully.',
+                    'Remove from pan. Gaze upon your creation.',
+                    'Serve with the cutout bread circle. Dip it in the yolk. Contemplate the cyclical nature of existence.'
+                ],
+                notes: 'It\'s an egg. It\'s bread. It\'s a hole. Revolutionary, I know.'
+            },
+            {
+                id: 'one_pan_chicken_sadness',
+                title: 'One-Pan Chicken Sadness',
+                category: 'dinner',
+                ingredients: [
+                    '2 chicken thighs (bone-in, skin-on, for maximum "effort")',
+                    '1 potato (cut into wedges, because cubes are too optimistic)',
+                    '1 onion (roughly chopped, precision is for chefs with culinary dreams)',
+                    'Olive oil (a splash, or a deluge, depending on your mood)',
+                    'Salt and pepper (to taste, or to just throw at it)',
+                    'Optional: A sprig of rosemary (for aesthetic deception)'
+                ],
+                instructions: [
+                    'Preheat oven to 400°F (200°C). Or roughly that. Ovens are suggestions, not dictators.',
+                    'Toss chicken, potato, and onion on a baking sheet. Try to make it look artistic. Fail.',
+                    'Drizzle with olive oil. Sprinkle with salt and pepper. Add rosemary, if you\'re pretending to be a better person.',
+                    'Roast for 30-40 minutes, or until chicken is cooked through and potatoes are vaguely soft. Flip halfway if you remember.',
+                    'Pull from oven. Let it sit. Everything needs a moment to reflect.',
+                    'Serve directly from the pan. Fewer dishes, fewer problems. Mostly.'
+                ],
+                notes: 'It\'s chicken. It\'s potatoes. It\'s acceptable. Don\'t expect applause.'
+            },
+            {
+                id: 'instant_ramen_elevation',
+                title: 'Instant Ramen (Slightly Elevated)',
+                category: 'lunch',
+                ingredients: [
+                    '1 packet instant ramen (your chosen brand of regret)',
+                    '2 cups water (or broth, if you\'re feeling luxurious)',
+                    '1 egg (for protein, and the illusion of effort)',
+                    'A few spinach leaves (for color, and perhaps a single nutrient)',
+                    'A dash of soy sauce (for umami, or just because)'
+                ],
+                instructions: [
+                    'Boil water in a small pot. Watch it. Contemplate its transformation.',
+                    'Add ramen noodles. Cook for 2 minutes. Stir occasionally, or don\'t. It\'ll be fine.',
+                    'Crack an egg directly into the boiling water. Poach it. Or just let it simmer until it looks acceptable.',
+                    'Add seasoning packet. Stir. Inhale the artificial aroma. Add spinach leaves. They\'ll wilt. Like your dreams.',
+                    'Pour into a bowl. Add a dash of soy sauce. Stir again. Or don\'t.',
+                    'Consume rapidly. The sadness tastes better hot.'
+                ],
+                notes: 'You made something resembling a meal. Pat yourself on the back. Gently.'
+            },
+            {
+                id: 'emergency_quesadilla',
+                title: 'Emergency Quesadilla (Because Sometimes You Just Need Cheese)',
+                category: 'snack',
+                ingredients: [
+                    '2 tortillas (flour, corn, doesn\'t matter. Just get some.)',
+                    '1/2 cup shredded cheese (cheddar, Monterey Jack, or that weird blend you found)',
+                    'Butter or cooking spray (for lubrication, and flavor)',
+                    'Optional: A pinch of cumin (if you\'re feeling exotic, or just have it)'
+                ],
+                instructions: [
+                    'Heat a non-stick pan over medium heat. Add butter or spray. Don\'t let it smoke. That\'s a different recipe.',
+                    'Place one tortilla in the pan. Sprinkle cheese over half of it. No, not the whole thing. Half. You\'ll see.',
+                    'Fold the empty half of the tortilla over the cheese. Press down gently. Encourage the cheese to melt.',
+                    'Cook for 2-3 minutes per side, or until golden brown and cheese is fully melted and gooey. Flip carefully, try not to lose cheese.',
+                    'Remove from pan. Cut into triangles. Because triangles are fun. Or something.',
+                    'Eat immediately. The window for optimal gooeyness is short. Like happiness.'
+                ],
+                notes: 'A simple pleasure for simple times. Which is most of the time, really.'
+            },
+            {
+                id: 'oatmeal_of_acceptance',
+                title: 'Oatmeal of Acceptance (A Morning Ritual)',
+                category: 'breakfast',
+                ingredients: [
+                    '1/2 cup rolled oats (quick or old-fashioned, depending on your level of commitment)',
+                    '1 cup water or milk (dairy or non-dairy, choose your illusion of health)',
+                    'A pinch of salt (to remind you of reality)',
+                    'Optional: A drizzle of honey/maple syrup (if you need a sweet lie)',
+                    'Optional: A few berries (for color, and minimal vitamins)'
+                ],
+                instructions: [
+                    'Combine oats, liquid, and salt in a small saucepan. Stare at it. It\'s just oats.',
+                    'Bring to a gentle boil over medium heat. Reduce heat to low. Simmer for 5-7 minutes (old-fashioned) or 1-2 minutes (quick). Stir occasionally to prevent sticking, or burn it for extra texture.',
+                    'Remove from heat. Let it sit for a minute. Reflect on your life choices.',
+                    'Pour into a bowl. Add optional sweeteners and berries. Try to make it look appealing. Fail.',
+                    'Consume while contemplating the mundane beauty of existence. Or while scrolling endlessly.'
+                ],
+                notes: 'It\'s warm. It\'s filling. It\'s breakfast. What more do you want? Seriously.'
+            },
+            {
+                id: 'grilled_cheese_rebellion',
+                title: 'Grilled Cheese Rebellion (Breaking Free from Culinary Expectations)',
+                category: 'lunch',
+                ingredients: [
+                    '2 slices of bread (white, whole wheat, whatever\'s available)',
+                    '2 slices of cheese (American, cheddar, provolone, any cheese that melts into submission)',
+                    'Butter or mayonnaise (yes, mayonnaise. Don\'t knock it till you\'ve silently judged it.)'
+                ],
+                instructions: [
+                    'Spread a thin layer of butter or mayo on one side of each bread slice. This is the "outside" part. The part facing judgment.',
+                    'Place one slice, buttered-side down, in a medium-hot pan. It should sizzle softly. Like your dreams.',
+                    'Place cheese slices on the bread. Try to cover as much surface area as possible. Less is not more here.',
+                    'Top with the second slice of bread, buttered-side up. Press down gently with a spatula. Encourage cohesion.',
+                    'Cook for 3-4 minutes per side, or until golden brown and cheese is a molten, glorious mess. Flip with conviction.',
+                    'Remove from pan. Slice diagonally. Because rectangles are boring. And you\'re not boring. Right?',
+                    'Consume while feeling a tiny, fleeting sense of accomplishment.'
+                ],
+                notes: 'It\'s grilled cheese. It\'s perfect. Don\'t overthink it. You\'ll only hurt yourself.'
+            },
+            {
+                id: 'solitary_smoothie',
+                title: 'Solitary Smoothie (A Cry for Help, or Just Hydration)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 banana (brown spots are fine, it shows character, or neglect)',
+                    '1/2 cup frozen berries (any kind, for color and antioxidants you probably don\'t need)',
+                    '1 cup liquid (milk, water, almond milk, the tears of your enemies)',
+                    'Optional: A spoonful of protein powder (for the illusion of gains)',
+                    'Optional: A handful of spinach (to trick yourself into thinking it\'s healthy)'
+                ],
+                instructions: [
+                    'Gather ingredients. Stare at the blender. It judges you.',
+                    'Throw everything into the blender. Seriously, just toss it. Precision is for rocket scientists, not smoothie makers.',
+                    'Blend until smooth. Or mostly smooth. A few chunks add "character."',
+                    'Pour into a glass. Or just drink directly from the blender. I won\'t tell.',
+                    'Consume. Feel slightly better about your life choices. Or don\'t. It\'s just a smoothie.'
+                ],
+                notes: 'It\'s liquid health. Or liquid sadness. Depends on your outlook. And the day.'
+            },
+            {
+                id: 'instant_noodles_with_ambition',
+                title: 'Instant Noodles (with Ambition)',
+                category: 'dinner',
+                ingredients: [
+                    '1 packet instant noodles (your favorite flavor of artificiality)',
+                    '2 cups water',
+                    '1 tablespoon soy sauce (or more, if you\'re feeling rebellious)',
+                    '1 teaspoon sesame oil (for that "I tried" vibe)',
+                    '1/2 cup leftover cooked chicken or tofu (optional, for substance)',
+                    'A handful of chopped green onions (for visual appeal, and mild onion flavor)'
+                ],
+                instructions: [
+                    'Boil water in a pot. Add noodles. Cook for 2 minutes, stirring occasionally. Don\'t overcook. No one likes mushy noodles.',
+                    'Drain most of the water, leaving about 1/4 cup in the pot. This is where the magic (or lack thereof) happens.',
+                    'Stir in the seasoning packet, soy sauce, and sesame oil. Mix well. Contemplate the complex flavor profile of synthetic chicken.',
+                    'Add cooked chicken or tofu, if using. Stir to combine. It\'s starting to look like a meal. Almost.',
+                    'Serve in a bowl. Top with green onions. Take a picture for social media. Pretend you\'re a gourmet chef.',
+                    'Eat quickly. The illusion fades with every bite.'
+                ],
+                notes: 'It\'s still instant noodles, but now with a fragile ego. Don\'t let it get to its head.'
+            },
+            {
+                id: 'lazy_pizza_toast',
+                title: 'Lazy Pizza Toast (When Effort is a Foreign Concept)',
+                category: 'snack',
+                ingredients: [
+                    '1-2 slices of bread (sturdy slices work best, to support your dreams)',
+                    '2 tablespoons tomato sauce (from a can, or that mysterious jar in the back of the fridge)',
+                    '1/4 cup shredded mozzarella cheese (or any cheese that melts)',
+                    'Optional: A sprinkle of dried oregano (for Italian-ish vibes)',
+                    'Optional: A single pepperoni slice (for authenticity, or irony)'
+                ],
+                instructions: [
+                    'Preheat toaster oven or oven to 350°F (175°C). Or just eye it. Whatever.',
+                    'Place bread on a baking sheet. Spoon tomato sauce evenly over each slice. Don\'t be shy, but also don\'t drown it.',
+                    'Sprinkle mozzarella cheese generously over the sauce. The more cheese, the less you\'ll regret this.',
+                    'Add oregano and/or pepperoni, if using. Behold your minimalist pizza.',
+                    'Bake for 5-7 minutes, or until cheese is bubbly and edges of bread are golden. Watch it. It burns quickly, like hope.',
+                    'Remove from oven. Let cool for a moment. Don\'t burn your mouth. You\'ve suffered enough.',
+                    'Consume while questioning why you didn\'t just order actual pizza.'
+                ],
+                notes: 'It\'s not delivery. It\'s barely even pizza. But it\'s something.'
+            },
+            {
+                id: 'fruit_bowl_of_regret',
+                title: 'Fruit Bowl of Regret (A Misguided Attempt at Health)',
+                category: 'snack',
+                ingredients: [
+                    '1 apple (preferably one that isn\'t too bruised, but beggars can\'t be choosers)',
+                    '1 orange (requires peeling, hence the "regret")',
+                    'A handful of grapes (the easy part)',
+                    'Optional: A few sad blueberries (for antioxidant bragging rights)'
+                ],
+                instructions: [
+                    'Wash fruit. If you remember. Who really washes fruit anyway?',
+                    'Attempt to peel orange. Struggle. Consider giving up. Persist.',
+                    'Slice apple. Watch it brown instantly. Accept its fate.',
+                    'Arrange fruit in a bowl. Try to make it look appetizing. Fail.',
+                    'Stare at it. Consider adding chocolate. Resist. Or don\'t. I\'m not here to judge.',
+                    'Eat slowly. Feel slightly virtuous. Or just hungry for actual food.'
+                ],
+                notes: 'Proof that good intentions pave the road to mediocre snacking.'
+            },
+            {
+                id: 'lonely_sandwich_assembly',
+                title: 'Lonely Sandwich Assembly (Because You\'re Worth It. Maybe.)',
+                category: 'lunch',
+                ingredients: [
+                    '2 slices of bread (choose wisely, this is your foundation)',
+                    '1-2 slices of deli meat (turkey, ham, whatever\'s on sale)',
+                    '1 slice of cheese (the glue of your existence)',
+                    'Lettuce (for crunch, and the illusion of health)',
+                    'Tomato slice (if you\'re feeling ambitious)',
+                    'Mustard or mayonnaise (choose your poison, or both)'
+                ],
+                instructions: [
+                    'Place one slice of bread on a plate. This is your base. Like your hopes.',
+                    'Apply mustard or mayonnaise. Spread it. Don\'t be messy. Try.',
+                    'Layer deli meat and cheese. Don\'t overdo it. Portion control is a myth, but we try.',
+                    'Add lettuce and tomato, if using. Arrange them artfully. Nobody will notice.',
+                    'Top with the second slice of bread. Press down firmly. Your creation is almost complete.',
+                    'Slice diagonally, for optimal eating experience. Or straight. Who cares.',
+                    'Consume while reflecting on the simple joys and inevitable disappointments of life.'
+                ],
+                notes: 'A sandwich. It\'s just a sandwich. But it\'s *your* sandwich.'
+            },
+            {
+                id: 'instant_scrambled_eggs',
+                title: 'Instant Scrambled Eggs (Barely Cooking)',
+                category: 'breakfast',
+                ingredients: [
+                    '2 eggs (from a chicken, usually)',
+                    'A splash of milk or water (optional, for theoretical fluffiness)',
+                    'Salt and pepper (to remind you it has flavor)',
+                    'Butter or oil (for the pan, because sticking is bad)',
+                    'A non-stick pan (or a very well-seasoned cast iron of misery)'
+                ],
+                instructions: [
+                    'Crack eggs into a bowl. Whisk vigorously, or weakly. Whatever. Nobody\'s watching.',
+                    'Add milk/water, salt, and pepper. Whisk again. Make sure it\'s vaguely mixed.',
+                    'Heat butter/oil in pan over medium-low heat. Don\'t let it smoke. Again, different recipe.',
+                    'Pour egg mixture into pan. Let it sit for a few seconds. Marvel at its uncooked state.',
+                    'Gently push cooked edges towards the center with a spatula. Repeat until mostly set but still slightly moist. This is the "scrambling" part.',
+                    'Remove from heat. Do not overcook. Rubber eggs are a tragedy.',
+                    'Serve immediately. Contemplate the brevity of breakfast.'
+                ],
+                notes: 'Eggs. Scrambled. Adequate. You survived another morning.'
+            },
+            {
+                id: 'bagel_with_cream_cheese_sadness',
+                title: 'Bagel with Cream Cheese Sadness',
+                category: 'breakfast',
+                ingredients: [
+                    '1 bagel (plain, everything, cinnamon raisin – choose your level of false hope)',
+                    'Cream cheese (any flavor, though plain best highlights the emptiness)'
+                ],
+                instructions: [
+                    'Obtain bagel. If frozen, toast. If fresh, toast anyway. Toasting makes everything seem more intentional.',
+                    'Slice bagel in half. Try not to cut yourself. It\'s just a bagel.',
+                    'Spread cream cheese liberally on both halves. Or sparsely. It\'s your sadness, decorate it how you wish.',
+                    'Assemble. Take a bite. Feel the slight crunch. Then the chew. Then the realization.',
+                    'Eat. This is sustenance. Embrace it. Or don\'t.'
+                ],
+                notes: 'A classic. Because some things never change, especially routine breakfast consumption.'
+            },
+            {
+                id: 'pathetic_pbj_creation',
+                title: 'Pathetic PB&J Creation',
+                category: 'snack',
+                ingredients: [
+                    '2 slices of bread (any kind, preferably not the end pieces)',
+                    'Peanut butter (smooth or crunchy, like life\'s choices)',
+                    'Jelly or jam (any fruit, any sweetness level, any artificiality level)'
+                ],
+                instructions: [
+                    'Place bread on plate. It\'s a canvas. A very basic canvas.',
+                    'Spread peanut butter on one slice. Try to get it even. Give up.',
+                    'Spread jelly/jam on the other slice. Don\'t mix the knives. Or do. Live dangerously.',
+                    'Press the two slices together. Ensure maximum contact. Like human relationships.',
+                    'Slice diagonally. Because it just feels right. Or don\'t. I\'m not here to police your sandwich geometry.',
+                    'Consume. It\'s sweet. It\'s savory. It\'s just a PB&J. Relax.'
+                ],
+                notes: 'A timeless classic. For when you\'re too tired for anything else. Which is always.'
+            },
+            {
+                id: 'the_lonely_cup_of_soup',
+                title: 'The Lonely Cup of Soup (Just Add Hot Water)',
+                category: 'lunch',
+                ingredients: [
+                    '1 packet instant soup (chicken noodle, tomato, whatever calls to your weary soul)',
+                    'Boiling water (the universal solvent of sadness)'
+                ],
+                instructions: [
+                    'Empty soup packet contents into a mug. Observe the dehydrated bits. Marvel at human ingenuity, or lack thereof.',
+                    'Boil water. Pour it into the mug. Watch the magic happen. Or don\'t. It\'s just dissolving powder.',
+                    'Stir until dissolved. Or until you\'re bored. Whatever comes first.',
+                    'Wait 2 minutes. Or 5. Or until you forget about it and it gets cold. Then reheat it.',
+                    'Consume slowly. Feel the warmth. Feel the emptiness. It\'s soup.'
+                ],
+                notes: 'Minimal effort, maximal existential dread. A winning combination.'
+            },
+            {
+                id: 'basic_omelette_attempt',
+                title: 'Basic Omelette Attempt (Expectations vs. Reality)',
+                category: 'breakfast',
+                ingredients: [
+                    '2-3 eggs (fresh, if you dare to dream)',
+                    'A splash of milk or cream (for that elusive fluffiness)',
+                    'Salt and pepper (the bare minimum)',
+                    'Butter or oil (to avoid a sticky situation)',
+                    'Optional: A pinch of shredded cheese (to hide imperfections)',
+                    'A small non-stick pan (your arena of culinary destiny)'
+                ],
+                instructions: [
+                    'Whisk eggs with milk, salt, and pepper in a bowl. Whisk until "just combined," which means don\'t overdo it. This isn\'t a soufflé.',
+                    'Heat butter or oil in the pan over medium-low heat until shimmering. Don\'t burn it. That\'s for the toast.',
+                    'Pour egg mixture into the hot pan. Let it sit for a moment. Resist the urge to poke.',
+                    'As edges set, gently push cooked egg toward the center, tilting the pan to let uncooked egg flow underneath. Repeat. This is the "folding" part, if you\'re optimistic.',
+                    'When mostly set but still slightly moist on top, sprinkle with cheese if using. Fold the omelette in half. Or just fold it messily. It\'ll taste the same.',
+                    'Slide onto a plate. Admire your creation. Or don\'t.',
+                    'Consume with the quiet satisfaction of having attempted something vaguely French.'
+                ],
+                notes: 'It\'s an omelette. Or a scrambled egg burrito. Potato, po-tah-to.'
+            },
+            {
+                id: 'speed_bean_on_toast',
+                title: 'Speed Beans on Toast (For the Chronically Underslept)',
+                category: 'breakfast',
+                ingredients: [
+                    '1/2 can baked beans (the kind from the back of the pantry)',
+                    '1-2 slices of toast (see "Burnt Toast Protocol" for details)',
+                    'Optional: A dash of hot sauce (for a spark of life)'
+                ],
+                instructions: [
+                    'Toast bread to your preferred level of crispness/char. This is your foundation.',
+                    'Empty beans into a microwave-safe bowl. Heat for 1-2 minutes, stirring halfway. Or heat in a small pot if you\'re feeling British.',
+                    'Retrieve toast. Place on a plate. It\'s waiting.',
+                    'Spoon hot beans generously over the toast. Try not to spill. You\'ll probably fail.',
+                    'Add hot sauce if you desire a modicum of excitement in your life.',
+                    'Eat quickly. The beans will get cold. Like your motivation.'
+                ],
+                notes: 'British comfort food, without the British comfort. Just food.'
+            },
+            {
+                id: 'lonely_yogurt_paradox',
+                title: 'Lonely Yogurt Paradox (Minimal Effort, Maximum Overthinking)',
+                category: 'snack',
+                ingredients: [
+                    '1 container yogurt (plain, Greek, fruit-on-the-bottom – choose your destiny)',
+                    'Optional: A few berries (for color, and to pretend it\'s not just yogurt)',
+                    'Optional: A sprinkle of granola (for crunch, and to add more crumbs to your keyboard)'
+                ],
+                instructions: [
+                    'Open yogurt. Observe its creamy, yet fundamentally uninteresting, consistency.',
+                    'Add berries or granola, if you\'re feeling ambitious. Or don\'t. It\'s just yogurt.',
+                    'Stir. Or don\'t. It doesn\'t really matter.',
+                    'Consume directly from the container. Fewer dishes, fewer problems. Mostly.',
+                    'Contemplate the fleeting nature of breakfast, or the futility of trying to make yogurt exciting.'
+                ],
+                notes: 'It\'s yogurt. It exists. So do you. Congratulations.'
+            },
+            {
+                id: 'emergency_tuna_situation',
+                title: 'Emergency Tuna Situation (When Only Canned Fish Will Do)',
+                category: 'lunch',
+                ingredients: [
+                    '1 can tuna (in water or oil, drain if you\'re not into aquatic immersion)',
+                    '2 tablespoons mayonnaise (or plain yogurt, if you\'re lying to yourself)',
+                    '1 stalk celery (finely chopped, for crunch and the illusion of freshness)',
+                    'Salt and pepper (because flavor is a concept)',
+                    'Bread or crackers (for vessel delivery)'
+                ],
+                instructions: [
+                    'Drain tuna. Try not to think about its previous existence.',
+                    'Flake tuna into a bowl with a fork. It\'s therapeutic, almost.',
+                    'Add mayonnaise (or yogurt), celery, salt, and pepper. Mix until vaguely combined. Don\'t overmix. It\'s not a soufflé.',
+                    'Taste. Adjust seasonings. Or don\'t. It\'ll still be tuna.',
+                    'Serve on bread or crackers. Consider it a meal. Or a cry for help.',
+                    'Consume while reflecting on the simple, fishy pleasures of life.'
+                ],
+                notes: 'A timeless classic for when you\'ve run out of options, dignity, and fresh produce.'
+            },
+            {
+                id: 'the_uninspired_smoothie',
+                title: 'The Uninspired Smoothie (For When You Can\'t Even)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 frozen banana (the one you forgot about in the freezer)',
+                    '1/2 cup generic fruit juice (apple, orange, whatever\'s open)',
+                    'A handful of ice (to make it cold, and fill space)'
+                ],
+                instructions: [
+                    'Put frozen banana, juice, and ice in a blender. Stare at it. It judges you.',
+                    'Blend until mostly smooth. A few chunks add "texture," or just highlight your lack of effort.',
+                    'Pour into a glass. Or don\'t. Drink directly from the blender. I\'m not here to judge.',
+                    'Consume. Feel slightly refreshed. Or just slightly colder. Whatever.'
+                ],
+                notes: 'It\'s not bad. It\'s not good. It just *is*. Like most things.'
+            },
+            {
+                id: 'avocado_toast_illusion',
+                title: 'Avocado Toast (The Millennial Mortgage)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 slice of artisanal toast (or just regular toast, don\'t be pretentious)',
+                    '1/2 ripe avocado (the other half is probably already brown)',
+                    'Salt and pepper (the basic spices of existence)',
+                    'Optional: Red pepper flakes (for a kick, and to show off)'
+                ],
+                instructions: [
+                    'Toast bread to your preferred shade of golden despair.',
+                    'Slice avocado. Or mash it. Depends on your commitment level. Spread evenly over toast.',
+                    'Sprinkle with salt, pepper, and red pepper flakes (if you\'re feeling spicy).',
+                    'Admire your creation. Take a picture. Post it online. Get validation.',
+                    'Eat. Realize it\'s just toast with avocado. It\'s fine. It\'s fine.'
+                ],
+                notes: 'Overhyped, yet oddly satisfying. Much like life.'
+            },
+            {
+                id: 'basic_tomato_pasta',
+                title: 'Basic Tomato Pasta (Because You\'re Not Dead Yet)',
+                category: 'dinner',
+                ingredients: [
+                    '1/2 box pasta (spaghetti, penne, whatever pasta shape judges you least)',
+                    '1 can crushed tomatoes (or diced, or whole and you\'ll mash them later, whatever)',
+                    '2 cloves garlic (minced, or just smashed if you\'re lazy)',
+                    '1 tablespoon olive oil (the liquid gold of weeknights)',
+                    'Salt, pepper, dried oregano (the holy trinity of Italian-ish food)',
+                    'Optional: A sprinkle of Parmesan cheese (for taste, or just for show)'
+                ],
+                instructions: [
+                    'Boil a pot of water. Add salt. Add pasta. Cook according to package directions. Don\'t overcook. No one likes mushy pasta. Except some people. Don\'t be those people.',
+                    'While pasta cooks, heat olive oil in a separate pan over medium heat. Add garlic. Sauté until fragrant, about 1 minute. Don\'t burn it. That\'s a different disaster.',
+                    'Pour in crushed tomatoes. Add salt, pepper, and oregano. Stir. Simmer for 10-15 minutes, or until it looks less like a can and more like sauce.',
+                    'Drain pasta. Do not rinse. The starch is important. Or something.',
+                    'Add pasta directly to the sauce pan. Toss to coat. Marvel at your culinary prowess. Or lack thereof.',
+                    'Serve in a bowl. Top with Parmesan cheese if you\'re feeling fancy. Eat. Feel slightly less empty.'
+                ],
+                notes: 'It\'s food. It\'s hot. It\'s vaguely Italian. You did it.'
+            },
+            {
+                id: 'cereal_crunch_of_defeat',
+                title: 'Cereal Crunch of Defeat (A Bowl of Existentialism)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 bowl (any size, because restraint is overrated)',
+                    'Cereal (your preferred brand of sugary cardboard)',
+                    'Milk (dairy or non-dairy, for the liquid component of your regrets)'
+                ],
+                instructions: [
+                    'Obtain bowl. Place on flat surface. The world is your oyster, or your cereal bowl.',
+                    'Pour cereal into bowl. Don\'t measure. Eyeball it. You know how much cereal you need to drown your sorrows.',
+                    'Add milk. Adjust quantity based on desired sogginess or crunch factor. This is a personal journey.',
+                    'Consume. Listen to the gentle crunch. It\'s the sound of your dreams slowly dissolving.',
+                    'Finish. Stare at the remaining milk. Contemplate drinking it. Do it. Or don\'t.'
+                ],
+                notes: 'The original fast food. Perfect for when you\'ve given up on actual cooking.'
+            },
+            {
+                id: 'speedy_sausage_sensation',
+                title: 'Speedy Sausage Sensation (Because Protein is Important, Apparently)',
+                category: 'dinner',
+                ingredients: [
+                    '2 pre-cooked sausages (chicken, pork, whatever\'s in the fridge)',
+                    '1 tablespoon olive oil (or any oil, really)',
+                    'Optional: A few chopped bell peppers (for color and forced vitamins)',
+                    'Optional: A squirt of ketchup or mustard (for dipping, and self-loathing)'
+                ],
+                instructions: [
+                    'Heat oil in a pan over medium heat. It should shimmer. Like a mirage in the desert of your hunger.',
+                    'Add sausages to the pan. Cook for 5-7 minutes, turning occasionally, until heated through and slightly browned. If adding peppers, add them halfway through.',
+                    'Remove from pan. Place on a plate. It\'s almost a meal.',
+                    'Serve with ketchup or mustard, if you\'re feeling wild. Or just eat them plain. Your choice.',
+                    'Consume rapidly. The quicker you eat, the less time you have to think about it.'
+                ],
+                notes: 'Minimal effort, maximal (debatable) protein. You\'re basically a bodybuilder now.'
+            },
+            {
+                id: 'frozen_veggie_fry',
+                title: 'Frozen Veggie Fry (The Path of Least Resistance)',
+                category: 'dinner',
+                ingredients: [
+                    '1 bag frozen mixed vegetables (peas, carrots, corn – the classics)',
+                    '1 tablespoon oil (vegetable, olive, whatever\'s within reach)',
+                    'Salt and pepper (your only friends in the seasoning world)',
+                    'Optional: A dash of soy sauce (for an Asian-ish twist)'
+                ],
+                instructions: [
+                    'Heat oil in a large pan or wok over medium-high heat. Let it get hot. Like your temper.',
+                    'Pour entire bag of frozen vegetables into the pan. Listen to the sizzle. It\'s the sound of despair.',
+                    'Stir constantly for 5-7 minutes, or until vegetables are heated through and slightly tender-crisp. Don\'t overcook. Nobody likes mushy vegetables.',
+                    'Season with salt, pepper, and soy sauce (if using). Stir again. It\'s almost palatable.',
+                    'Serve as a side, or as your main course if you\'ve truly hit rock bottom.',
+                    'Eat. You\'re technically eating vegetables. Good job.'
+                ],
+                notes: 'Proof that cooking doesn\'t have to be a performance. Just a necessity.'
+            },
+            {
+                id: 'sad_baked_potato_lament',
+                title: 'Sad Baked Potato (A Root Vegetable\'s Lament)',
+                category: 'dinner',
+                ingredients: [
+                    '1 large potato (Russet is traditional, but any starchy tuber will do)',
+                    'Olive oil (a drizzle, for crisp skin, or just for show)',
+                    'Salt (a generous amount, for flavor and regret)',
+                    'Optional: Butter, sour cream, chives (the illusion of toppings)'
+                ],
+                instructions: [
+                    'Preheat oven to 400°F (200°C). Prick potato all over with a fork. This lets the steam escape. Like your hope.',
+                    'Rub potato with olive oil. Sprinkle liberally with salt. It\'s a salt bath for your potato.',
+                    'Place directly on oven rack. Bake for 45-60 minutes, or until fork-tender. Don\'t open the oven too much. You\'ll lose heat, and momentum.',
+                    'Carefully remove from oven. Slice open. Fluff the insides with a fork. It\'s satisfying, almost.',
+                    'Top with optional butter, sour cream, and chives. Or just eat it plain. Your choice.',
+                    'Consume while reflecting on the simple pleasures of a hot, starchy vegetable.'
+                ],
+                notes: 'A blank canvas for your culinary apathy. Go wild. Or don\'t.'
+            },
+            {
+                id: 'instant_hot_chocolate_blues',
+                title: 'Instant Hot Chocolate Blues (A Sweet, Fleeting Escape)',
+                category: 'snack',
+                ingredients: [
+                    '1 packet hot chocolate mix (the powdered kind, for expediency)',
+                    'Hot water or milk (your preferred liquid carrier of sugar)',
+                    'Optional: A single sad marshmallow (for floating, and brief joy)'
+                ],
+                instructions: [
+                    'Empty hot chocolate mix into a mug. Stare at the powder. It\'s just powder.',
+                    'Heat water or milk. Pour into mug. Stir until dissolved. Or until you\'re bored.',
+                    'Add marshmallow, if using. Watch it melt. It\'s symbolic.',
+                    'Drink slowly. Feel the warmth. Feel the artificial sweetness. It\'s a brief respite.',
+                    'Finish. Contemplate the sugar rush. Then the crash. It\'s all part of the process.'
+                ],
+                notes: 'A perfect beverage for contemplating life\'s failures, or just a Tuesday afternoon.'
+            },
+            {
+                id: 'the_basic_salad',
+                title: 'The Basic Salad (An Attempt at Responsibility)',
+                category: 'lunch',
+                ingredients: [
+                    '2 cups mixed greens (pre-washed, because effort)',
+                    '1/2 cucumber (sliced, for watery crunch)',
+                    '1/4 cup cherry tomatoes (halved, or whole if you like a challenge)',
+                    'Your preferred dressing (store-bought, because who has time?)'
+                ],
+                instructions: [
+                    'Place greens in a bowl. This is the foundation of your responsible choice.',
+                    'Add cucumber and cherry tomatoes. Arrange them aesthetically. Or just dump them in. Your call.',
+                    'Drizzle with dressing. Don\'t drown it. It\'s a salad, not a soup.',
+                    'Toss gently. Or vigorously. Whatever gets the job done.',
+                    'Consume. Feel slightly virtuous. The feeling won\'t last.'
+                ],
+                notes: 'It\'s green. It\'s mostly healthy. It\'s probably not what you really wanted. But you ate it. So there.'
+            },
+            {
+                id: 'canned_soup_fortification',
+                title: 'Canned Soup Fortification (Level Up Your Laziness)',
+                category: 'lunch',
+                ingredients: [
+                    '1 can condensed soup (tomato, chicken noodle, cream of something ambiguous)',
+                    'Water or milk (as per can instructions, follow them for once)',
+                    'Optional: A handful of crackers (for dipping, and added carbs)'
+                ],
+                instructions: [
+                    'Empty soup into a saucepan. Observe its gelatinous state. Marvel at food science.',
+                    'Add water or milk as directed. Stir to combine. It will look less terrifying now.',
+                    'Heat over medium heat, stirring occasionally, until simmering. Don\'t let it boil. That\'s too much excitement.',
+                    'Pour into a bowl. Add crackers if you feel like adding texture to your liquid meal.',
+                    'Consume. Feel a faint sense of warmth. And perhaps a flicker of regret.'
+                ],
+                notes: 'The culinary equivalent of a security blanket. It\'s there when you need it. And you probably need it now.'
+            },
+            {
+                id: 'solitary_rice_bowl',
+                title: 'Solitary Rice Bowl (The Foundation of Everything and Nothing)',
+                category: 'dinner',
+                ingredients: [
+                    '1/2 cup uncooked rice (white, brown, whatever you have in bulk)',
+                    '1 cup water (or slightly more, depending on your rice cooker\'s mood)',
+                    'A pinch of salt (to acknowledge its existence)',
+                    'Optional: A fried egg (for protein, and a runny yolk for sadness)'
+                ],
+                instructions: [
+                    'Rinse rice under cold water until water runs clear. Or don\'t. Who has time for that?',
+                    'Combine rice, water, and salt in a saucepan. Bring to a boil. Reduce heat to low, cover, and simmer for 15-20 minutes (white) or 40-45 minutes (brown). Don\'t peek. The rice is shy.',
+                    'Remove from heat. Let sit, covered, for 10 minutes. This is crucial for fluffiness. Trust me.',
+                    'Fluff with a fork. Admire its individual grains. Each one a tiny universe.',
+                    'If adding an egg, fry it in a separate pan while rice is resting. Place on top of rice.',
+                    'Serve plain, or with whatever sad condiment you have. Eat. It\'s just rice. But it\'s *your* rice.'
+                ],
+                notes: 'The culinary equivalent of a blank slate. Or a staring contest. You decide.'
+            },
+            {
+                id: 'instant_cereal_bar_escape',
+                title: 'Instant Cereal Bar Escape (When the Bowl is Too Much)',
+                category: 'snack',
+                ingredients: [
+                    '1 pre-packaged cereal bar (any flavor, any texture)'
+                ],
+                instructions: [
+                    'Locate cereal bar. It\'s probably buried at the bottom of a bag somewhere.',
+                    'Tear open wrapper. Marvel at the convenience. Or lament the lack of effort.',
+                    'Consume. Directly. No dishes required. This is peak efficiency.',
+                    'Wipe crumbs from your face. Realize you\'re still hungry. Repeat if necessary.'
+                ],
+                notes: 'A testament to human laziness. And it\'s glorious.'
+            },
+            {
+                id: 'pathetic_pizza_delivery',
+                title: 'Pathetic Pizza (Delivery Edition)',
+                category: 'dinner',
+                ingredients: [
+                    '1 pizza (ordered from a questionable establishment)',
+                    'Your wallet (for payment, obviously)',
+                    'Your phone (for the order, and the subsequent existential scrolling)'
+                ],
+                instructions: [
+                    'Open phone. Navigate to food delivery app. Stare at endless options. Feel overwhelmed.',
+                    'Select pizza. Any pizza. It doesn\'t matter. You\'re hungry.',
+                    'Place order. Wait. Stare at the clock. Consider doing something productive. Don\'t.',
+                    'Hear doorbell. Retrieve pizza. Pay. Feel a brief surge of joy.',
+                    'Open box. Observe the grease. Accept your fate.',
+                    'Consume. Directly from the box. No plates needed. You\'re an animal. Embrace it.'
+                ],
+                notes: 'The ultimate convenience food. Also, a convenient way to avoid doing dishes.'
+            },
+            {
+                id: 'fried_egg_solace',
+                title: 'Fried Egg Solace (A Golden Disc of Comfort)',
+                category: 'breakfast',
+                ingredients: [
+                    '1-2 eggs (preferably not from a carton, but again, beggars, choosers)',
+                    'Butter or oil (for cooking, and adding fat to your life)',
+                    'Salt and pepper (the minimum requirement for flavor)',
+                    'A frying pan (non-stick, ideally)'
+                ],
+                instructions: [
+                    'Heat butter or oil in a pan over medium heat. Let it melt and shimmer. The quiet before the storm.',
+                    'Crack eggs directly into the pan. Try not to break the yolks. This is harder than it looks.',
+                    'Cook for 2-3 minutes, or until whites are set and yolks are still runny. You can baste with hot butter, or just watch it silently.',
+                    'Season with salt and pepper. Slide onto a plate. Admire its golden perfection.',
+                    'Consume. Dip toast in the yolk. Feel a brief moment of peace. It won\'t last.'
+                ],
+                notes: 'Simple, elegant, and almost impossible to mess up. Almost.'
+            },
+            {
+                id: 'avocado_with_spoon',
+                title: 'Avocado (with a Spoon - The Ultimate Lazy Meal)',
+                category: 'snack',
+                ingredients: [
+                    '1 ripe avocado (the perfect state of perishable goodness)',
+                    'A pinch of salt (to enhance the flavor, or your despair)',
+                    'A spoon (your weapon of choice)'
+                ],
+                instructions: [
+                    'Retrieve avocado from counter. If it\'s rock hard, wait. If it\'s mush, too late.',
+                    'Slice avocado in half lengthwise. Twist to open. Behold the pit. Discard it. Or save it. For what? Who knows.',
+                    'Sprinkle a pinch of salt on each half. This is important. Don\'t skip this step.',
+                    'Grab a spoon. Scoop out the green flesh. Consume directly from the skin. No plate. No fuss. Just pure, unadulterated avocado.',
+                    'Repeat with the second half. Or don\'t. Save it for later. It\'ll be brown by then.'
+                ],
+                notes: 'It\'s nature\'s butter. And your easiest path to nutritional fulfillment. Or just a quick snack.'
+            },
+            {
+                id: 'instant_mashed_potato_misery',
+                title: 'Instant Mashed Potato Misery (A Comforting Lie)',
+                category: 'dinner',
+                ingredients: [
+                    '1 serving instant mashed potato flakes (the powdered promise of potatoes)',
+                    'Boiling water or milk (as directed on package)',
+                    'Butter (a pat, for richness, and to pretend it\'s real)',
+                    'Salt and pepper (because taste is subjective)'
+                ],
+                instructions: [
+                    'Pour potato flakes into a bowl. Marvel at their dehydrated state.',
+                    'Boil water or milk. Pour over flakes. Stir. Watch them magically transform. Or just absorb liquid and become mush.',
+                    'Add a pat of butter. Stir again. Season with salt and pepper. Taste. Adjust. Or don\'t. It\'s instant.',
+                    'Consume. It\'s warm. It\'s starchy. It\'s a potato-like substance. Accept it.'
+                ],
+                notes: 'The fastest way to mashed potatoes. Also, the fastest way to question all your life choices.'
+            },
+            {
+                id: 'last_resort_canned_chili',
+                title: 'Last Resort Canned Chili (When All Hope Is Lost)',
+                category: 'dinner',
+                ingredients: [
+                    '1 can chili (meat or vegetarian, your choice of minimal effort)',
+                    'Optional: A handful of shredded cheese (to distract from the chili\'s true nature)',
+                    'Optional: A few tortilla chips (for scooping, and additional crunch)'
+                ],
+                instructions: [
+                    'Open can of chili. Pour into a saucepan. Or directly into a microwave-safe bowl if you\'re truly committed to laziness.',
+                    'Heat over medium heat, stirring occasionally, until bubbling. Or microwave for 2-3 minutes. Listen to the gentle simmering. It\'s the sound of your stomach conceding.',
+                    'Pour into a bowl. Top with cheese and/or chips, if you\'re feeling fancy. Or just eat it plain. I\'m not judging.',
+                    'Consume rapidly. It\'s chili. It\'s filling. It\'s over.'
+                ],
+                notes: 'It\'s not gourmet. It\'s not pretty. But it\'s food. And sometimes, that\'s all you need.'
+            },
+            {
+                id: 'lonely_bagel_sandwich',
+                title: 'Lonely Bagel Sandwich (A Round of Indifference)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 bagel (toasted or not, the universe doesn\'t care)',
+                    '1 egg (fried or scrambled, for protein)',
+                    '1 slice cheese (the binding agent)',
+                    'Optional: 1 slice ham or bacon (for carnivorous inclinations)'
+                ],
+                instructions: [
+                    'Prepare egg as desired (fried or scrambled). Cook meat if using. Multitasking is fun.',
+                    'Slice bagel. Toast, if desired. The crunch is optional, but recommended for avoiding rubbery textures.',
+                    'Assemble: bottom bagel half, cheese, cooked egg, meat (if using), top bagel half. Press down gently.',
+                    'Consume. It\'s a bagel sandwich. It\'s fine. Move on with your day.'
+                ],
+                notes: 'A breakfast sandwich that understands your need for efficiency and mild satisfaction.'
+            },
+            {
+                id: 'existential_peanut_butter_banana',
+                title: 'Existential Peanut Butter Banana (A Philosophical Snack)',
+                category: 'snack',
+                ingredients: [
+                    '1 banana (ripe, but not mushy, unless you\'re into that)',
+                    '2 tablespoons peanut butter (smooth, because chunky is too chaotic)',
+                    'Optional: A sprinkle of cinnamon (for a subtle hint of complexity)'
+                ],
+                instructions: [
+                    'Peel banana. Observe its curved form. Contemplate its evolutionary purpose.',
+                    'Spread peanut butter along the length of the banana. Try to get it even. Fail.',
+                    'Sprinkle with cinnamon, if using. It looks fancy. Nobody needs to know it took zero effort.',
+                    'Consume. It\'s sweet. It\'s savory. It\'s a banana with peanut butter. What more could you ask for? Seriously.',
+                    'Reflect on the simple joys and inevitable sticky fingers.'
+                ],
+                notes: 'A snack that says, "I tried. A little. Not too much, though." '
+            },
+            {
+                id: 'deconstructed_nacho_platter',
+                title: 'Deconstructed Nacho Platter (Chips, Cheese, and the Fading Dream)',
+                category: 'snack',
+                ingredients: [
+                    'A handful of tortilla chips (the ones at the bottom of the bag)',
+                    '1/2 cup shredded cheese (cheddar, Monterey Jack, or the sad, lonely string cheese)',
+                    'Optional: A dollop of salsa (store-bought, obviously)',
+                    'Optional: A spoonful of sour cream (if you\'re feeling decadent, or despairing)'
+                ],
+                instructions: [
+                    'Arrange chips on a microwave-safe plate. Try to make it look like more than it is.',
+                    'Sprinkle cheese over chips. Don\'t be shy. Cheese is your friend.',
+                    'Microwave for 30-60 seconds, or until cheese is melted and bubbling. Watch it carefully. It burns quickly, like trust.',
+                    'Remove from microwave. Add salsa and sour cream, if using. This is your "deconstruction."',
+                    'Consume immediately. The crunch of the chips and the gooeyness of the cheese are fleeting. Like joy.'
+                ],
+                notes: 'It\'s not gourmet. It\'s not pretty. But it\'s cheese and chips. And sometimes, that\'s enough.'
+            },
+            {
+                id: 'minimalist_toast_with_butter',
+                title: 'Minimalist Toast with Butter (The Original Low-Effort Meal)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 slice of bread (any kind, for real this time)',
+                    'Butter (room temperature, if you\'re lucky, or just hard from the fridge)'
+                ],
+                instructions: [
+                    'Toast bread. Refer to "Burnt Toast Protocol" if you wish for a challenge.',
+                    'Retrieve butter. If it\'s cold, try to spread it. Fail. Mutilate toast. Accept it.',
+                    'Apply butter to toast. Evenly. Or not. Who cares.',
+                    'Consume. It\'s bread. It\'s butter. It\'s a meal. Barely.'
+                ],
+                notes: 'The foundation of all laziness. And surprisingly good.'
+            },
+            {
+                id: 'the_basic_fried_rice_attempt',
+                title: 'The Basic Fried Rice Attempt (Leftovers Reimagined)',
+                category: 'dinner',
+                ingredients: [
+                    '2 cups leftover cooked rice (day-old is best, less sticky)',
+                    '1-2 tablespoons oil (vegetable or sesame, for flavor)',
+                    '1 egg (scrambled, then chopped)',
+                    '1/2 cup frozen peas and carrots (for color and nutrients you probably don\'t need)',
+                    '2 tablespoons soy sauce (or more, to taste)',
+                    'Optional: A dash of sriracha (for a kick, and to hide your shame)'
+                ],
+                instructions: [
+                    'Heat oil in a large skillet or wok over medium-high heat. Let it get hot. Like your regrets.',
+                    'Add peas and carrots. Stir-fry for 2-3 minutes. They\'ll soften. Like your will.',
+                    'Add cooked rice. Break up any clumps. Stir-fry for 3-5 minutes, until heated through and slightly crispy. This is where the magic happens, or doesn\'t.',
+                    'Pour in soy sauce. Add chopped scrambled egg. Stir to combine. It\'s starting to look like fried rice. Almost.',
+                    'Add sriracha if you want some spice. Stir again. Or don\'t.',
+                    'Serve immediately. It\'s fried rice. It\'s acceptable. Don\'t tell anyone it\'s mostly leftovers.'
+                ],
+                notes: 'A perfect way to avoid wasting food. Or just an excuse to eat rice for dinner.'
+            },
+            {
+                id: 'mug_cake_of_sadness',
+                title: 'Mug Cake of Sadness (When You Need a Single Serving of Regret)',
+                category: 'dessert',
+                ingredients: [
+                    '4 tablespoons all-purpose flour',
+                    '4 tablespoons granulated sugar',
+                    '2 tablespoons cocoa powder (unsweetened, because bitterness is key)',
+                    '1/4 teaspoon baking powder',
+                    'Pinch of salt',
+                    '3 tablespoons milk (any kind, dairy or non-dairy)',
+                    '1 tablespoon oil (vegetable or melted butter)',
+                    '1/4 teaspoon vanilla extract (optional, for a hint of flavor)',
+                    '1 mug (microwave-safe, because efficiency)'
+                ],
+                instructions: [
+                    'In the mug, whisk together dry ingredients: flour, sugar, cocoa, baking powder, and salt. Make sure there are no lumps. It\'s harder than it sounds.',
+                    'Add milk, oil, and vanilla extract (if using). Stir until just combined. Don\'t overmix. Lumps are character.',
+                    'Microwave on high for 60-90 seconds. Watch it rise. And then fall. Like your hopes and dreams.',
+                    'Remove from microwave. Let cool slightly. Don\'t burn your tongue. You\'ll need it for future lamentations.',
+                    'Eat directly from the mug. No plate needed. You\'re alone anyway.'
+                ],
+                notes: 'A quick dessert for when you need a sugar fix and a reminder of your fleeting existence.'
+            },
+            {
+                id: 'instant_oatmeal_with_fruit',
+                title: 'Instant Oatmeal (with an Obligatory Fruit)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 packet instant oatmeal (maple & brown sugar, for maximum fake flavor)',
+                    'Boiling water (the hot, wet part)',
+                    '1/2 banana (sliced, for "nutrition" and texture)'
+                ],
+                instructions: [
+                    'Empty oatmeal packet into a bowl. Admire the beige powder.',
+                    'Add boiling water. Stir. Watch it swell. Like your procrastination.',
+                    'Slice banana. Add to oatmeal. Arrange nicely. Or just dump it. Whatever.',
+                    'Wait 2 minutes. Or until it\'s cool enough to eat without blistering your tongue. Time is an illusion.',
+                    'Consume. It\'s warm. It\'s sweet. It\'s breakfast. You did it. Again.'
+                ],
+                notes: 'The breakfast of champions. If by champions you mean people who hit snooze too many times.'
+            },
+            {
+                id: 'sad_desk_pizza',
+                title: 'Sad Desk Pizza (Leftover Edition)',
+                category: 'lunch',
+                ingredients: [
+                    '1 slice leftover pizza (cold, probably)',
+                    'Your dignity (optional, but likely absent)'
+                ],
+                instructions: [
+                    'Retrieve pizza slice from fridge. Observe its cold, congealed state. Accept it.',
+                    'Optional: Microwave for 30 seconds. This might make it slightly less sad. Or more.',
+                    'Place on a paper towel. Or directly on your desk. I won\'t tell.',
+                    'Consume. Quickly. Before anyone sees you.',
+                    'Wipe grease from face. Reflect on the transient nature of cheese.'
+                ],
+                notes: 'It\'s food. It\'s cold. It\'s pizza. It\'s fine. It\'s always fine.'
+            },
+            {
+                id: 'the_unfortunate_stir_fry',
+                title: 'The Unfortunate Stir-Fry (A Noble Attempt)',
+                category: 'dinner',
+                ingredients: [
+                    '1 chicken breast (sliced thinly, for quick cooking)',
+                    '1 bag frozen stir-fry vegetables (because chopping is hard)',
+                    '2 tablespoons soy sauce (the main flavor component)',
+                    '1 tablespoon oil (vegetable or canola)',
+                    'Optional: Cooked rice (for serving, and carb loading)'
+                ],
+                instructions: [
+                    'Heat oil in a large skillet or wok over medium-high heat. Wait for it to shimmer. This is your moment.',
+                    'Add sliced chicken. Stir-fry for 5-7 minutes until cooked through. Don\'t overcrowd the pan. That\'s a rookie mistake.',
+                    'Add frozen stir-fry vegetables. Stir-fry for another 5-7 minutes until tender-crisp. They will release water. Embrace the steam.',
+                    'Pour in soy sauce. Stir to combine. Admire the color change. It\'s progress.',
+                    'Serve immediately over rice, if using. Or just eat it plain. It\'s food. You made it.',
+                    'Consume. Feel a faint sense of accomplishment. Or just relief it\'s over.'
+                ],
+                notes: 'It\'s stir-fry. It\'s edible. You tried. And that\'s all that matters. Probably.'
+            },
+            {
+                id: 'canned_tuna_on_crackers',
+                title: 'Canned Tuna on Crackers (A Culinary Masterpiece of Last Resort)',
+                category: 'snack',
+                ingredients: [
+                    '1 can tuna (drained, mostly)',
+                    'A sleeve of crackers (any kind, preferably salty)',
+                    'Optional: A squirt of sriracha (for a spicy surprise)'
+                ],
+                instructions: [
+                    'Drain tuna. Try not to think about the fish\'s former life.',
+                    'Flake tuna into a bowl. Or directly onto a cracker. Efficiency is key.',
+                    'If using, add sriracha to tuna and mix. Or just dollop it on top. Your choice.',
+                    'Spread tuna onto crackers. Create small, individual servings of despair.',
+                    'Consume. The crunch. The fish. The existential void. It\'s all there.'
+                ],
+                notes: 'When your fridge is empty and your will is weaker. A classic.'
+            },
+            {
+                id: 'microwaved_baked_potato_blues',
+                title: 'Microwaved Baked Potato Blues (Quick, But Questionable)',
+                category: 'dinner',
+                ingredients: [
+                    '1 medium potato (Russet works best, but any will do in a pinch)',
+                    'Fork (for stabbing, and venting frustration)',
+                    'Optional: Butter, salt, pepper (for flavor, or to disguise what it is)'
+                ],
+                instructions: [
+                    'Wash potato. Puncture several times with a fork. This prevents explosions. Mostly.',
+                    'Place potato on a microwave-safe plate. Microwave on high for 5-7 minutes, flipping halfway. Cook until soft when squeezed. Don\'t burn yourself.',
+                    'Carefully remove from microwave. Slice open. Fluff the insides with a fork. It\'s not quite baked, but it\'s something.',
+                    'Add butter, salt, and pepper if desired. Or don\'t. It\'ll still be a potato.',
+                    'Consume. It\'s hot. It\'s soft. It\'s a potato. Accept it.'
+                ],
+                notes: 'Faster than oven-baked, but with a lingering sense of disappointment.'
+            },
+            {
+                id: 'the_humble_peanut_butter_toast',
+                title: 'The Humble Peanut Butter Toast (A Solid Foundation)',
+                category: 'breakfast',
+                ingredients: [
+                    '1-2 slices of toast (your preferred level of crispness)',
+                    'Peanut butter (smooth or chunky, for texture variance)'
+                ],
+                instructions: [
+                    'Toast bread. Try not to burn it. Again.',
+                    'Spread peanut butter generously over the warm toast. Watch it melt slightly. It\'s soothing.',
+                    'Consume. It\'s crunchy. It\'s creamy. It\'s a solid breakfast. What more could you want?'
+                ],
+                notes: 'Simple. Reliable. Always there for you. Unlike some people.'
+            },
+            {
+                id: 'instant_cup_o_noodles_meditation',
+                title: 'Instant Cup O\' Noodles Meditation (A Journey of Self-Discovery)',
+                category: 'lunch',
+                ingredients: [
+                    '1 cup of instant noodles (the styrofoam cup kind, for maximum authenticity)',
+                    'Hot water (from a kettle, or the sink if you\'re brave)'
+                ],
+                instructions: [
+                    'Peel back lid of noodle cup. Observe the dry noodle block. It\'s a testament to human engineering.',
+                    'Add hot water up to the fill line. Close lid. Wait 3 minutes. This is where the "meditation" comes in. Stare blankly.',
+                    'Open lid. Stir. Inhale the artificial aroma. It\'s familiar. Too familiar.',
+                    'Consume directly from the cup. No plate needed. Less dishes, less problems.',
+                    'Finish. Stare into the empty cup. Contemplate the fleeting nature of sustenance.'
+                ],
+                notes: 'A culinary shortcut that leaves you questioning everything. Especially your dietary choices.'
+            },
+            {
+                id: 'quick_scrambled_eggs_cheese',
+                title: 'Quick Scrambled Eggs with Cheese (Adding a Layer of Complexity)',
+                category: 'breakfast',
+                ingredients: [
+                    '2 eggs',
+                    '1 tablespoon milk (optional, for fluffiness)',
+                    'Salt and pepper',
+                    '1/4 cup shredded cheese (cheddar, mozzarella, whatever melts easily)',
+                    'Butter or oil'
+                ],
+                instructions: [
+                    'Whisk eggs, milk (if using), salt, and pepper in a bowl. Try to make it look effortless.',
+                    'Heat butter or oil in a non-stick pan over medium-low heat.',
+                    'Pour egg mixture into pan. Let it set for a moment. Resist the urge to fidget.',
+                    'As edges set, push cooked egg toward center, tilting pan. Repeat until mostly set. Sprinkle cheese over top. Let it melt into gooey oblivion.',
+                    'Serve immediately. Don\'t let it get cold. Cold scrambled eggs are a travesty.'
+                ],
+                notes: 'A slight upgrade. You\'re basically a gourmet chef now. Don\'t tell anyone.'
+            },
+            {
+                id: 'simple_egg_fried_rice',
+                title: 'Simple Egg Fried Rice (The "I Have Leftover Rice" Special)',
+                category: 'dinner',
+                ingredients: [
+                    '2 cups cooked rice (day-old, crucial for non-stickiness)',
+                    '2 eggs (scrambled and chopped)',
+                    '2 tablespoons soy sauce',
+                    '1 tablespoon oil (vegetable or canola)',
+                    'Optional: A few chopped green onions (for color, and mild oniony taste)'
+                ],
+                instructions: [
+                    'Heat oil in a large skillet or wok over medium-high heat. Let it get hot. Like the sun. But in your kitchen.',
+                    'Add rice. Break up any clumps. Stir-fry for 3-5 minutes until heated through and slightly crispy. This is your moment to shine. Or just stir.',
+                    'Pour in soy sauce. Add chopped scrambled egg. Stir to combine. It\'s a dance of ingredients. A very simple dance.',
+                    'Add green onions if using. Stir again. Or don\'t.',
+                    'Serve immediately. It\'s fried rice. It\'s fine. No one will know how easy it was.'
+                ],
+                notes: 'When you\'re too lazy to make actual dinner, but still want to feel productive.'
+            },
+            {
+                id: 'toast_with_avocado_and_everything_bagel_seasoning',
+                title: 'Toast with Avocado and Everything Bagel Seasoning (The Basic B. Masterpiece)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 slice bread (sourdough preferred, but any carb slab works)',
+                    '1/2 avocado (ripe, not too firm, not too mushy)',
+                    'Everything bagel seasoning (generous amount, for maximum "effort")',
+                    'Optional: Pinch of red pepper flakes (for daring souls)'
+                ],
+                instructions: [
+                    'Toast bread to your preferred level of golden-brown inadequacy. Don\'t burn it. That\'s a different recipe.',
+                    'Mash avocado directly on the toast with a fork. Or slice it. Your choice, your destiny.',
+                    'Sprinkle an obscene amount of everything bagel seasoning over the avocado. This is what makes it "fancy."',
+                    'Add red pepper flakes if you\'re feeling spicy, or just want to prove something.',
+                    'Consume. Take a picture first. It didn\'t happen if it\'s not on the internet. Did it?'
+                ],
+                notes: 'It\'s trendy. It\'s easy. It\'s avocado toast. The circle of life, basically.'
+            },
+            {
+                id: 'quick_chicken_and_rice_bowl',
+                title: 'Quick Chicken and Rice Bowl (The "Whatever\'s Left" Edition)',
+                category: 'dinner',
+                ingredients: [
+                    '1 cup cooked rice (leftover, naturally)',
+                    '1/2 cup cooked chicken (shredded or diced, from last night\'s dinner or a rotisserie chicken of despair)',
+                    '2 tablespoons soy sauce (or teriyaki sauce, if you\'re feeling wild)',
+                    'Optional: A handful of frozen peas or corn (for color and mild nutrition)'
+                ],
+                instructions: [
+                    'Combine rice and chicken in a microwave-safe bowl. Add frozen peas or corn if using. Stir. It\'s a sad mix.',
+                    'Microwave for 2-3 minutes, or until heated through. Stir halfway. Don\'t let it explode.',
+                    'Add soy sauce. Stir to combine. Taste. Adjust if necessary. Or don\'t. It\'s fine.',
+                    'Consume directly from the bowl. No dishes, no problem. You\'re a genius. Or just tired.'
+                ],
+                notes: 'A minimalist meal for maximum fatigue. It gets the job done. Barely.'
+            },
+            {
+                id: 'the_sad_salsa_and_chips',
+                title: 'The Sad Salsa and Chips (A Dip into Desperation)',
+                category: 'snack',
+                ingredients: [
+                    'Tortilla chips (the broken ones at the bottom of the bag)',
+                    'Salsa (jarred, medium heat, because anything spicier requires commitment)'
+                ],
+                instructions: [
+                    'Pour chips into a bowl. Or directly onto the table. I\'m not judging your life choices.',
+                    'Open salsa jar. Spoon salsa into a smaller bowl. Or directly onto the chip. Live dangerously.',
+                    'Dip chip into salsa. Try not to break the chip. Failure is inevitable.',
+                    'Consume. The crunch. The mild spice. The crushing reality. It\'s all there.'
+                ],
+                notes: 'A classic. For when you\'re too lazy to even make a quesadilla.'
+            },
+            {
+                id: 'basic_canned_tuna_sandwich',
+                title: 'Basic Canned Tuna Sandwich (The "Why Bother" Edition)',
+                category: 'lunch',
+                ingredients: [
+                    '1 can tuna (drained)',
+                    '2 slices bread',
+                    '2 tablespoons mayonnaise'
+                ],
+                instructions: [
+                    'Drain tuna. Flake into a bowl. Add mayonnaise. Mix. It\'s not rocket science.',
+                    'Spread on bread. Top with other slice. Press gently. It\'s a sandwich. Almost.',
+                    'Consume. It\'s fishy. It\'s mayo-y. It\'s lunch. You survived.'
+                ],
+                notes: 'A culinary marvel of minimal effort and questionable satisfaction.'
+            },
+            {
+                id: 'hard_boiled_egg_of_reflection',
+                title: 'Hard-Boiled Egg of Reflection (A Solid Choice)',
+                category: 'breakfast',
+                ingredients: [
+                    '1-2 eggs',
+                    'Water',
+                    'A small pot'
+                ],
+                instructions: [
+                    'Place eggs in a small pot. Cover with water by about an inch. Bring to a rolling boil. Observe the bubbles. Like your anxieties.',
+                    'Once boiling, cover and remove from heat. Let sit for 10-12 minutes for hard-boiled. More if you like them grey and sulfurous.',
+                    'Drain hot water. Immediately transfer eggs to an ice bath (or run under cold water) to stop cooking. This prevents the green ring of sadness.',
+                    'Peel. It\'s a struggle. You\'ll lose some white. Accept it.',
+                    'Consume. With salt and pepper. Or just plain. It\'s a protein boost. Or a moment of quiet contemplation.'
+                ],
+                notes: 'Simple. Reliable. And a reminder that not everything needs to be complicated.'
+            },
+            {
+                id: 'the_sad_oatmeal_cookie',
+                title: 'The Sad Oatmeal Cookie (Store-Bought & Stale)',
+                category: 'snack',
+                ingredients: [
+                    '1 oatmeal cookie (from a package, preferably slightly stale)',
+                    'A glass of milk (to wash down your disappointment)'
+                ],
+                instructions: [
+                    'Locate cookie. It\'s probably at the bottom of the bag. Or the bottom of your hopes.',
+                    'Take a bite. Feel the dry chewiness. It\'s fine. It\'s really fine.',
+                    'Wash down with milk. Or water. Or tears. Whatever liquid is available.',
+                    'Repeat until cookie is gone. Feel a brief moment of sugary comfort, quickly replaced by emptiness.'
+                ],
+                notes: 'A sad reminder that not all dreams come true. Especially cookie dreams.'
+            },
+            {
+                id: 'basic_instant_ramen_soup',
+                title: 'Basic Instant Ramen Soup (The OG Desperation Meal)',
+                category: 'lunch',
+                ingredients: [
+                    '1 packet instant ramen noodles',
+                    '2 cups water',
+                    'Seasoning packet (don\'t lose it)'
+                ],
+                instructions: [
+                    'Boil water. Add noodles. Cook for 2 minutes. Stir. It\'s not hard.',
+                    'Add seasoning packet. Stir again. Inhale the artificial goodness. Or regret.',
+                    'Serve. Consume. Feel alive. Briefly.'
+                ],
+                notes: 'The gateway drug to culinary apathy. Proceed with caution.'
+            },
+            {
+                id: 'frozen_pizza_regret',
+                title: 'Frozen Pizza (The Circle of Regret)',
+                category: 'dinner',
+                ingredients: [
+                    '1 frozen pizza (any kind, the cheaper, the better)',
+                    'Oven (preheated, if you remember)'
+                ],
+                instructions: [
+                    'Preheat oven. Or don\'t. It\'ll just take longer.',
+                    'Remove pizza from box and plastic wrap. Place on oven rack. Try not to drop it. That\'s bad luck.',
+                    'Bake for recommended time, or until crust is vaguely golden and cheese is bubbly. Don\'t walk away. It will burn.',
+                    'Remove from oven. Let cool. Don\'t burn your mouth. You\'ve suffered enough.',
+                    'Slice. Consume. Feel the artificial cheese. Feel the processed crust. It\'s fine. It\'s really fine.'
+                ],
+                notes: 'A quick solution to hunger. A lasting monument to culinary despair.'
+            },
+            {
+                id: 'the_lonely_hard_boiled_egg',
+                title: 'The Lonely Hard-Boiled Egg (A Single Moment of Protein)',
+                category: 'snack',
+                ingredients: [
+                    '1 hard-boiled egg (pre-cooked, or freshly boiled from your last burst of motivation)',
+                    'A pinch of salt (the essential accompaniment to solitude)'
+                ],
+                instructions: [
+                    'Peel the hard-boiled egg. Try to keep it intact. You\'ll probably fail. Accept your fate.',
+                    'Sprinkle with salt. Admire its pale, oval form. It\'s simple. Like you.',
+                    'Consume. One bite at a time. Reflect on the fleeting nature of snacks.'
+                ],
+                notes: 'Pure protein. Pure simplicity. Pure, unadulterated blandness. Unless you add salt.'
+            },
+            {
+                id: 'sad_toast_with_jam',
+                title: 'Sad Toast with Jam (A Sweet Distraction)',
+                category: 'breakfast',
+                ingredients: [
+                    '1-2 slices of bread (toasted)',
+                    'Jam or jelly (any fruit, any sweetness)'
+                ],
+                instructions: [
+                    'Toast bread. Spread jam. It\'s not rocket science. It\'s just toast.',
+                    'Consume. Feel the sugar. Feel the carbs. Feel the inevitable crash.'
+                ],
+                notes: 'A simple pleasure for simple minds. Or just tired ones.'
+            },
+            {
+                id: 'basic_canned_chicken_noodle_soup',
+                title: 'Basic Canned Chicken Noodle Soup (The Classic Illness Cure)',
+                category: 'lunch',
+                ingredients: [
+                    '1 can chicken noodle soup (the kind with minimal chicken and suspicious noodles)',
+                    'Water (as directed on can)'
+                ],
+                instructions: [
+                    'Empty soup into saucepan. Add water. Stir. Heat over medium heat until warm. Don\'t boil. You\'re not trying to impress anyone.',
+                    'Serve. Consume. Feel marginally better. Or worse. It\'s soup.'
+                ],
+                notes: 'When you\'re too sick to care, this soup cares even less.'
+            },
+            {
+                id: 'humble_banana_snack',
+                title: 'Humble Banana (Just a Banana)',
+                category: 'snack',
+                ingredients: [
+                    '1 banana (yellow, hopefully)'
+                ],
+                instructions: [
+                    'Peel banana. Carefully. Or aggressively. It\'s your banana.',
+                    'Consume. It\'s fruit. It\'s healthy. You\'re doing great. Or not.'
+                ],
+                notes: 'Nature\'s perfect snack. Requires zero thought. Ideal.'
+            },
+            {
+                id: 'the_lonely_ramen_egg_drop',
+                title: 'The Lonely Ramen Egg Drop (Adding a Single Point of Interest)',
+                category: 'dinner',
+                ingredients: [
+                    '1 packet instant ramen',
+                    '2 cups water',
+                    '1 egg (for a tiny protein boost)',
+                    'Seasoning packet'
+                ],
+                instructions: [
+                    'Boil water. Add ramen noodles. Cook for 2 minutes. Stir.',
+                    'Crack egg directly into the boiling noodles. Stir gently to break up the yolk and create strands. It\'s an "egg drop" soup now. Kinda.',
+                    'Add seasoning packet. Stir. Serve. Consume. You cooked. Barely.'
+                ],
+                notes: 'When you want to feel like you\'re making an effort, without actually making an effort.'
+            },
+            {
+                id: 'sad_frozen_burrito_experience',
+                title: 'Sad Frozen Burrito Experience (A Taste of Convenience)',
+                category: 'lunch',
+                ingredients: [
+                    '1 frozen burrito (any flavor, any brand)',
+                    'Microwave (your partner in culinary crime)'
+                ],
+                instructions: [
+                    'Remove burrito from wrapper. Place on microwave-safe plate. Or paper towel. Whatever.',
+                    'Microwave for 1-2 minutes, flip, then another 1-2 minutes, or until heated through. Be warned: the ends might be frozen, the middle molten. Such is life.',
+                    'Consume. Carefully. It\'s hot. It\'s bland. It\'s a burrito. You did it.'
+                ],
+                notes: 'A quick solution to hunger. A lasting reminder of why you don\'t cook.'
+            },
+            {
+                id: 'the_melancholy_baked_apple',
+                title: 'The Melancholy Baked Apple (A Warm Hug of Despair)',
+                category: 'dessert',
+                ingredients: [
+                    '1 apple (preferably a baking apple, like Granny Smith)',
+                    '1 teaspoon sugar (brown or white, your choice of sweetness)',
+                    'Pinch of cinnamon (for warmth, and fake coziness)',
+                    'Optional: A small pat of butter (for richness, and regret)',
+                    'Oven or microwave'
+                ],
+                instructions: [
+                    'Core the apple. Try not to cut yourself. Fill the hole with sugar, cinnamon, and butter (if using). It\'s a tiny treasure chest of flavor.',
+                    'Bake in oven at 375°F (190°C) for 20-30 minutes, or until soft. Or microwave for 2-4 minutes until soft. Faster is often sadder.',
+                    'Consume. It\'s warm. It\'s sweet. It\'s an apple. You made it. Barely.'
+                ],
+                notes: 'A simple, comforting dessert that asks nothing of you, and gives little in return.'
+            },
+            {
+                id: 'basic_canned_beans',
+                title: 'Basic Canned Beans (The Protein You Didn\'t Ask For)',
+                category: 'dinner',
+                ingredients: [
+                    '1 can black beans (or pinto, kidney, etc. - drained and rinsed)',
+                    'Optional: A pinch of cumin or chili powder (to make it interesting)'
+                ],
+                instructions: [
+                    'Drain and rinse beans. Seriously, rinse them. Unless you like the extra sodium.',
+                    'Place in a saucepan. Heat over medium heat until warm. Add spices if desired. Stir. It\'s not complex.',
+                    'Consume. As a side. Or as a main. It\'s beans. They exist.'
+                ],
+                notes: 'Simple. Filling. And a reminder that fiber is important. Or something.'
+            },
+            {
+                id: 'the_sad_scrambled_egg_toast',
+                title: 'The Sad Scrambled Egg Toast (A Minimalist Masterpiece)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 slice of toast',
+                    '1 scrambled egg (plain, no frills)',
+                    'Salt and pepper'
+                ],
+                instructions: [
+                    'Toast bread. Scramble egg. Combine. It\'s simple. It\'s elegant. It\'s breakfast.',
+                    'Consume. Feel the crunch of the toast. The softness of the egg. The blandness of life.'
+                ],
+                notes: 'A balanced breakfast. If by balanced you mean barely adequate.'
+            },
+            {
+                id: 'pathetic_popcorn_bowl',
+                title: 'Pathetic Popcorn Bowl (A Salty Distraction)',
+                category: 'snack',
+                ingredients: [
+                    '1 bag microwave popcorn (butter flavor, obviously)',
+                    'Your favorite movie (preferably a sad one)'
+                ],
+                instructions: [
+                    'Place popcorn bag in microwave. Follow instructions. Or don\'t. It\'ll probably burn anyway.',
+                    'Listen to the pops. The sound of hope. Then the dying pops. The sound of despair.',
+                    'Remove from microwave. Open carefully. Avoid the steam. It burns. Like betrayal.',
+                    'Pour into a bowl. Or directly into your lap. I\'m not judging.',
+                    'Consume. One kernel at a time. Contemplate the butter-like substance. And life.'
+                ],
+                notes: 'A perfect snack for when you need to avoid reality for a little while.'
+            },
+            {
+                id: 'basic_pasta_with_butter_and_parmesan',
+                title: 'Basic Pasta with Butter and Parmesan (The "I\'m an Adult" Meal)',
+                category: 'dinner',
+                ingredients: [
+                    '1/2 box pasta (spaghetti or penne, again, your choice of judgment)',
+                    '2 tablespoons butter',
+                    '1/4 cup grated Parmesan cheese (the dusty kind from the green can)',
+                    'Salt and pepper',
+                    'Optional: Pinch of red pepper flakes (for a surprising kick)'
+                ],
+                instructions: [
+                    'Boil water. Add pasta. Cook until al dente (or slightly overcooked, who cares). Drain. Reserve a bit of pasta water. For... reasons.',
+                    'Return hot pasta to pot. Add butter. It will melt. Like your dreams.',
+                    'Add Parmesan cheese and a splash of reserved pasta water. Stir until creamy. Or vaguely creamy. Whatever.',
+                    'Season with salt, pepper, and red pepper flakes (if using). Stir again. Serve. Consume. You cooked. Kind of.'
+                ],
+                notes: 'Simple. Classic. And a reminder that sometimes, less really is just less.'
+            },
+            {
+                id: 'the_sad_cheese_and_crackers',
+                title: 'The Sad Cheese and Crackers (A Pretentious Snack)',
+                category: 'snack',
+                ingredients: [
+                    'A few crackers (any kind, preferably not too salty)',
+                    '1-2 slices of cheese (cheddar, provolone, whatever you found lurking)'
+                ],
+                instructions: [
+                    'Place crackers on a plate. This is your foundation. Your edible foundation.',
+                    'Place cheese on crackers. Try to make it look artful. Fail.',
+                    'Consume. The crunch. The blandness. The fleeting sense of sophistication.'
+                ],
+                notes: 'When you want to feel fancy without actually trying.'
+            },
+            {
+                id: 'lonely_cup_of_tea',
+                title: 'Lonely Cup of Tea (A Warm Embrace of Solitude)',
+                category: 'snack',
+                ingredients: [
+                    '1 tea bag (black, green, herbal – choose your flavor of quiet)',
+                    'Boiling water',
+                    'Optional: Sugar or honey (to sweeten the bitter pill of life)',
+                    'Optional: A splash of milk (to dilute the despair)'
+                ],
+                instructions: [
+                    'Place tea bag in a mug. Boil water. Pour into mug. Watch the tea steep. It\'s a slow process. Like healing.',
+                    'Add sugar/honey and/or milk if desired. Stir. Inhale the aroma. It\'s comforting. Briefly.',
+                    'Consume slowly. Feel the warmth. Feel the quiet. Feel nothing. It\'s just tea.'
+                ],
+                notes: 'A simple ritual for when you need a moment of peace. Or just a warm beverage.'
+            },
+            {
+                id: 'the_overly_simple_scrambled_eggs',
+                title: 'The Overly Simple Scrambled Eggs (Barely a Recipe)',
+                category: 'breakfast',
+                ingredients: [
+                    '2 eggs',
+                    'Butter or oil',
+                    'Salt and pepper'
+                ],
+                instructions: [
+                    'Heat butter/oil in pan. Crack eggs directly into pan. Scramble with spatula. Add salt and pepper. Cook until done. Remove. Eat. Done.'
+                ],
+                notes: 'It\'s eggs. They\'re scrambled. Don\'t overthink it.'
+            },
+            {
+                id: 'basic_microwave_popcorn',
+                title: 'Basic Microwave Popcorn (The Sound of Inevitable Mess)',
+                category: 'snack',
+                ingredients: [
+                    '1 bag microwave popcorn'
+                ],
+                instructions: [
+                    'Microwave popcorn. Listen for the pops to slow. Remove. Open carefully. Avoid the steam. It burns. Like your culinary aspirations.',
+                    'Consume. Try not to spill. You will fail.'
+                ],
+                notes: 'A quick snack. A guaranteed mess. Life is full of trade-offs.'
+            },
+            {
+                id: 'frozen_waffles_of_indifference',
+                title: 'Frozen Waffles of Indifference (A Toasted Reality)',
+                category: 'breakfast',
+                ingredients: [
+                    '2 frozen waffles (any brand, any shape)',
+                    'Toaster',
+                    'Optional: Syrup (for sweetness, and stickiness)'
+                ],
+                instructions: [
+                    'Place waffles in toaster. Toast. Listen to the click. It\'s the sound of minimal effort.',
+                    'Remove. Drizzle with syrup, if you dare. Or don\'t. It\'s just a waffle.',
+                    'Consume. Feel the warmth. Feel the carb-induced numbness.'
+                ],
+                notes: 'A convenient breakfast. A testament to pre-packaged goods.'
+            },
+            {
+                id: 'the_sad_canned_chickpea_salad',
+                title: 'The Sad Canned Chickpea Salad (A Vegan\'s Last Stand)',
+                category: 'lunch',
+                ingredients: [
+                    '1 can chickpeas (drained and rinsed)',
+                    '2 tablespoons vegan mayonnaise (or regular, if you\'ve truly given up)',
+                    '1/4 cup chopped celery (for crunch, and the illusion of freshness)',
+                    'Salt and pepper',
+                    'Optional: Paprika (for color, and a hint of something interesting)'
+                ],
+                instructions: [
+                    'Mash chickpeas with a fork in a bowl. Not completely smooth. Lumpy is fine. Like life.',
+                    'Add mayonnaise, celery, salt, pepper, and paprika (if using). Mix. Taste. Adjust.',
+                    'Consume with crackers, or just a spoon. It\'s salad. Kinda.'
+                ],
+                notes: 'It\'s vegan. It\'s protein. It\'s a salad. You\'re doing great. Or not.'
+            },
+            {
+                id: 'instant_mac_and_cheese_monologue',
+                title: 'Instant Mac & Cheese Monologue (A Cheesy Confession)',
+                category: 'dinner',
+                ingredients: [
+                    '1 box instant mac & cheese (the kind with powdered cheese)',
+                    'Water',
+                    'Milk (a splash)',
+                    'Butter (a pat)'
+                ],
+                instructions: [
+                    'Boil water. Add noodles. Cook for 7-10 minutes. Drain. Try not to lose noodles down the drain. You will fail.',
+                    'Return noodles to pot. Add butter, milk, and cheese powder. Stir. Watch it transform into a vibrant orange goo. It\'s unsettling.',
+                    'Consume. Feel the artificial cheese. The processed pasta. The existential dread. It\'s all there.'
+                ],
+                notes: 'A childhood classic. Now with added cynicism and adult responsibilities.'
+            },
+            {
+                id: 'basic_canned_green_beans',
+                title: 'Basic Canned Green Beans (The Green Void)',
+                category: 'side',
+                ingredients: [
+                    '1 can green beans (drained)',
+                    'Optional: A pat of butter (to make them palatable)',
+                    'Optional: Salt and pepper'
+                ],
+                instructions: [
+                    'Drain green beans. Place in a saucepan. Heat over medium heat until warm. Stir. It\'s not exciting.',
+                    'Add butter, salt, and pepper if desired. Stir again. Consume. It\'s green. It\'s a vegetable. You\'re doing great.'
+                ],
+                notes: 'The side dish that nobody asked for, but everyone accepts.'
+            },
+            {
+                id: 'the_silent_cheese_stick',
+                title: 'The Silent Cheese Stick (A Moment of Dairy)',
+                category: 'snack',
+                ingredients: [
+                    '1 string cheese stick'
+                ],
+                instructions: [
+                    'Unwrap cheese stick. Peel off a "string." Or just bite into it. Live your life.',
+                    'Consume. Silently. Reflect on its simplicity. And your hunger.'
+                ],
+                notes: 'Minimal effort, minimal joy. But it\'s cheese. So it\'s something.'
+            },
+            {
+                id: 'sad_frozen_burrito_salad',
+                title: 'Sad Frozen Burrito Salad (A Post-Microwave Regret)',
+                category: 'lunch',
+                ingredients: [
+                    '1 microwaved frozen burrito',
+                    'A handful of sad lettuce leaves (from the fridge crisper drawer)',
+                    'Optional: A dollop of salsa (to hide the blandness)'
+                ],
+                instructions: [
+                    'Microwave burrito. Let it cool slightly. Slice it open. Observe the inner contents. It\'s a mystery.',
+                    'Arrange lettuce leaves on a plate. Place the sliced burrito on top. It\'s a salad. Kinda.',
+                    'Add salsa if desired. Consume. The contrast of hot and cold. The despair. It\'s all there.'
+                ],
+                notes: 'When you want to feel healthy, but still cling to convenience.'
+            },
+            {
+                id: 'humble_peanut_butter_spoon',
+                title: 'Humble Peanut Butter (With a Spoon)',
+                category: 'snack',
+                ingredients: [
+                    '2 tablespoons peanut butter (from the jar)',
+                    '1 spoon'
+                ],
+                instructions: [
+                    'Open peanut butter jar. Scoop out a spoonful. Consume. Repeat. It\'s not complex. It\'s just peanut butter.'
+                ],
+                notes: 'The purest form of snacking. Minimal effort, maximum density.'
+            },
+            {
+                id: 'the_unfortunate_ramen_stir_fry',
+                title: 'The Unfortunate Ramen Stir-Fry (A Noodle Experiment)',
+                category: 'dinner',
+                ingredients: [
+                    '1 packet instant ramen (discard seasoning)',
+                    '1 tablespoon oil',
+                    '1 egg (scrambled)',
+                    '1/2 cup frozen mixed vegetables',
+                    '2 tablespoons soy sauce'
+                ],
+                instructions: [
+                    'Cook ramen noodles in boiling water, drain. In a separate pan, heat oil. Add vegetables, stir-fry. Add scrambled egg, cooked noodles, and soy sauce. Stir. Consume. It\'s edible. Barely.'
+                ],
+                notes: 'A confused meal. Like your life choices.'
+            },
+            {
+                id: 'basic_cheese_sandwich',
+                title: 'Basic Cheese Sandwich (The Ultimate Comfort of Apathy)',
+                category: 'lunch',
+                ingredients: [
+                    '2 slices bread',
+                    '2 slices cheese (any kind)'
+                ],
+                instructions: [
+                    'Place cheese between bread. Consume. It\'s a sandwich. Nothing more. Nothing less.'
+                ],
+                notes: 'When you\'ve given up on effort, but not on carbs and dairy.'
+            },
+            {
+                id: 'the_sad_hot_dog',
+                title: 'The Sad Hot Dog (A Tube of Regret)',
+                category: 'dinner',
+                ingredients: [
+                    '1 hot dog (from a package, mysterious origins)',
+                    '1 hot dog bun (stale, probably)',
+                    'Optional: Ketchup, mustard (the red and yellow lies)'
+                ],
+                instructions: [
+                    'Boil, microwave, or pan-fry hot dog. Cook until warm. Or hot. Whatever.',
+                    'Place in bun. Add condiments. Consume. It\'s a hot dog. It\'s fine. It\'s always fine.'
+                ],
+                notes: 'A culinary marvel of convenience. A philosophical debate on nutritional value.'
+            },
+            {
+                id: 'instant_grits_gloom',
+                title: 'Instant Grits Gloom (A Southern Disappointment)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 packet instant grits',
+                    'Boiling water',
+                    'Optional: Butter, salt, cheese (to make it less gloomy)'
+                ],
+                instructions: [
+                    'Empty grits into bowl. Add boiling water. Stir. Watch it thicken. Like your waistline.',
+                    'Add butter, salt, cheese if desired. Stir. Consume. It\'s grits. It\'s warm. It\'s fine.'
+                ],
+                notes: 'A breakfast for when you need something warm and bland to start your day.'
+            },
+            {
+                id: 'the_lonely_instant_oatmeal',
+                title: 'The Lonely Instant Oatmeal (Unadorned and Uninspired)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 packet instant oatmeal (plain, for maximum existential reflection)',
+                    'Hot water'
+                ],
+                instructions: [
+                    'Empty oatmeal into bowl. Add hot water. Stir. Wait. Consume. It\'s warm. It\'s oatmeal. It\'s a life choice.'
+                ],
+                notes: 'The purest form of oatmeal. Devoid of joy. Full of fiber. Probably.'
+            },
+            {
+                id: 'basic_canned_corn',
+                title: 'Basic Canned Corn (The Yellow Betrayal)',
+                category: 'side',
+                ingredients: [
+                    '1 can corn (drained)',
+                    'Optional: Butter, salt, pepper'
+                ],
+                instructions: [
+                    'Drain corn. Heat in saucepan. Add butter, salt, pepper. Stir. Consume. It\'s corn. It\'s yellow. It\'s a vegetable.'
+                ],
+                notes: 'A side dish that exists. For reasons unknown.'
+            },
+            {
+                id: 'the_sad_yogurt_cup',
+                title: 'The Sad Yogurt Cup (A Contained Melancholy)',
+                category: 'snack',
+                ingredients: [
+                    '1 yogurt cup (any flavor, as long as it\'s not too exciting)'
+                ],
+                instructions: [
+                    'Open yogurt. Stir. Consume. Directly from the cup. It\'s cold. It\'s dairy. It\'s a snack.'
+                ],
+                notes: 'A fleeting moment of perceived health. Quickly forgotten.'
+            },
+            {
+                id: 'instant_pudding_of_regret',
+                title: 'Instant Pudding of Regret (A Jiggle of Despair)',
+                category: 'dessert',
+                ingredients: [
+                    '1 box instant pudding mix (chocolate, for maximum indulgence and guilt)',
+                    '2 cups milk (cold, any kind)'
+                ],
+                instructions: [
+                    'Whisk pudding mix and milk in a bowl for 2 minutes. Watch it thicken. It\'s magic. Or chemicals.',
+                    'Pour into serving dishes. Chill for 5 minutes. Or just eat it warm. I won\'t tell.',
+                    'Consume. It\'s sweet. It\'s jiggly. It\'s a dessert. You earned it. Or didn\'t.'
+                ],
+                notes: 'A quick fix for a sweet craving. A slow realization of your dietary choices.'
+            },
+            {
+                id: 'the_lonely_bagel_with_butter',
+                title: 'The Lonely Bagel with Butter (A Carby Embrace)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 bagel (toasted)',
+                    'Butter'
+                ],
+                instructions: [
+                    'Toast bagel. Spread butter. Consume. It\'s a bagel. It\'s butter. It\'s fine.'
+                ],
+                notes: 'Simple carbohydrates for a complex existence.'
+            },
+            {
+                id: 'basic_cheese_omelette',
+                title: 'Basic Cheese Omelette (A Cheesy Attempt at Effort)',
+                category: 'breakfast',
+                ingredients: [
+                    '2 eggs',
+                    '1/4 cup shredded cheese',
+                    'Butter or oil',
+                    'Salt and pepper'
+                ],
+                instructions: [
+                    'Whisk eggs. Heat pan. Pour eggs. When nearly set, add cheese. Fold. Cook until cheese melts. Consume. You made an omelette. Almost.'
+                ],
+                notes: 'When you want eggs, but with extra steps. And cheese.'
+            },
+            {
+                id: 'the_sad_cup_of_noodles',
+                title: 'The Sad Cup of Noodles (A Flavorful Void)',
+                category: 'lunch',
+                ingredients: [
+                    '1 cup of instant noodles (any flavor)'
+                ],
+                instructions: [
+                    'Add hot water to cup. Wait 3 minutes. Stir. Consume. It\'s noodles. It\'s a cup. It\'s fine.'
+                ],
+                notes: 'The quick lunch solution. Also, the quick existential crisis solution.'
+            },
+            {
+                id: 'humble_banana_and_peanut_butter',
+                title: 'Humble Banana and Peanut Butter (A Sticky Situation)',
+                category: 'snack',
+                ingredients: [
+                    '1 banana',
+                    'Peanut butter'
+                ],
+                instructions: [
+                    'Peel banana. Spread peanut butter on it. Consume. It\'s messy. It\'s delicious. It\'s life.'
+                ],
+                notes: 'A simple, yet effective, snack. Good for potassium. And avoiding real cooking.'
+            },
+            {
+                id: 'basic_frozen_peas',
+                title: 'Basic Frozen Peas (The Tiny Green Truths)',
+                category: 'side',
+                ingredients: [
+                    '1/2 bag frozen peas',
+                    'Optional: Butter, salt, pepper'
+                ],
+                instructions: [
+                    'Boil or microwave peas until hot. Drain. Add butter, salt, pepper. Consume. They\'re peas. They\'re green. They\'re fine.'
+                ],
+                notes: 'A side dish that requires minimal thought. Like most of your life choices.'
+            },
+            {
+                id: 'the_lonely_apple',
+                title: 'The Lonely Apple (A Solitary Crunch)',
+                category: 'snack',
+                ingredients: [
+                    '1 apple (any kind, preferably not bruised)'
+                ],
+                instructions: [
+                    'Wash apple. Or don\'t. Bite into it. Consume. It\'s fruit. It\'s healthy. You\'re welcome.'
+                ],
+                notes: 'Nature\'s fast food. Convenient. But always alone.'
+            },
+            {
+                id: 'basic_canned_soup_with_crackers',
+                title: 'Basic Canned Soup with Crackers (The Comforting Routine)',
+                category: 'lunch',
+                ingredients: [
+                    '1 can soup (any flavor)',
+                    'Crackers'
+                ],
+                instructions: [
+                    'Heat soup. Serve with crackers. Consume. It\'s warm. It\'s salty. It\'s a meal. You did it.'
+                ],
+                notes: 'A classic. For when you need a warm hug, but only have a can opener.'
+            },
+            {
+                id: 'the_sad_slice_of_cheese',
+                title: 'The Sad Slice of Cheese (A Dairy Moment)',
+                category: 'snack',
+                ingredients: [
+                    '1 slice cheese (any kind)'
+                ],
+                instructions: [
+                    'Unwrap cheese. Consume. It\'s cheese. It\'s fine. Move on.'
+                ],
+                notes: 'The ultimate minimalist snack. Pure dairy. Pure desperation.'
+            },
+            {
+                id: 'instant_coffee_of_resignation',
+                title: 'Instant Coffee of Resignation (A Bitter Reality)',
+                category: 'breakfast',
+                ingredients: [
+                    '1-2 teaspoons instant coffee',
+                    'Hot water',
+                    'Optional: Sugar, milk (to soften the blow)'
+                ],
+                instructions: [
+                    'Add coffee to mug. Add hot water. Stir. Add sugar/milk. Consume. It\'s coffee. It\'s hot. It\'s caffeine. You\'re awake. Barely.'
+                ],
+                notes: 'The fastest way to get caffeine into your system. And a reminder that life is short.'
+            },
+            {
+                id: 'the_lonely_slice_of_bread',
+                title: 'The Lonely Slice of Bread (Unadorned Existence)',
+                category: 'snack',
+                ingredients: [
+                    '1 slice bread (any kind)'
+                ],
+                instructions: [
+                    'Consume. It\'s bread. It\'s carbs. It\'s a snack. It\'s fine.'
+                ],
+                notes: 'The purest form of a snack. Uncomplicated. Uninspired.'
+            },
+            {
+                id: 'basic_canned_peas',
+                title: 'Basic Canned Peas (The Spheres of Despair)',
+                category: 'side',
+                ingredients: [
+                    '1 can peas (drained)',
+                    'Optional: Butter, salt, pepper'
+                ],
+                instructions: [
+                    'Drain peas. Heat in saucepan. Add butter, salt, pepper. Stir. Consume. They\'re peas. They\'re green. They\'re round.'
+                ],
+                notes: 'A side dish that fills a void. Both literally and metaphorically.'
+            },
+            {
+                id: 'the_sad_banana_muffin',
+                title: 'The Sad Banana Muffin (Store-Bought, Probably Dry)',
+                category: 'snack',
+                ingredients: [
+                    '1 banana muffin (from a package)'
+                ],
+                instructions: [
+                    'Unwrap muffin. Take a bite. It\'s fine. It\'s really fine. Consume. Feel the dry crumbs. The fleeting sweetness.'
+                ],
+                notes: 'A quick snack. A guaranteed dryness. You\'re welcome.'
+            },
+            {
+                id: 'basic_microwave_burrito',
+                title: 'Basic Microwave Burrito (A Roll of Minimal Effort)',
+                category: 'lunch',
+                ingredients: [
+                    '1 frozen burrito'
+                ],
+                instructions: [
+                    'Microwave burrito. Follow instructions. Consume. It\'s hot. It\'s a burrito. It\'s fine.'
+                ],
+                notes: 'The quick and easy solution to hunger. With all the flavor of cardboard.'
+            },
+            {
+                id: 'the_sad_instant_oatmeal_with_nut_butter',
+                title: 'The Sad Instant Oatmeal with Nut Butter (A Glimmer of Hope)',
+                category: 'breakfast',
+                ingredients: [
+                    '1 packet instant oatmeal',
+                    'Hot water',
+                    '1 tablespoon peanut butter (or almond butter)'
+                ],
+                instructions: [
+                    'Prepare oatmeal as directed. Stir in peanut butter. Consume. It\'s warm. It\'s nutty. It\'s a slight improvement.'
+                ],
+                notes: 'When you want to elevate your sadness. Just a little bit.'
+            },
+            {
+                id: 'basic_frozen_spinach',
+                title: 'Basic Frozen Spinach (The Wilted Dream)',
+                category: 'side',
+                ingredients: [
+                    '1 bag frozen spinach',
+                    'Optional: Garlic powder, salt, pepper'
+                ],
+                instructions: [
+                    'Cook spinach according to package directions. Drain excess water. Add seasonings. Consume. It\'s green. It\'s healthy. It\'s fine.'
+                ],
+                notes: 'The most humble of side dishes. It exists. So do you.'
+            }
+        ];
+
+
+        /**
+         * Initializes the application by populating recipes.
+         */
+        function initializeAndLoadRecipes() {
+            console.log('Loading local recipes...');
+            displayLoadingState(true, 'LOADING_LOCAL_DATA. STAND_BY...');
+
+            // Assign hardcoded recipes directly
+            allRecipes = initialRecipes.map(recipe => {
+                // Assign a category if not already present (for consistent filtering)
+                if (!recipe.category) {
+                    const categories = ['breakfast', 'lunch', 'dinner', 'dessert', 'snack', 'side'];
+                    recipe.category = categories[Math.floor(Math.random() * categories.length)];
+                }
+                // Ensure ID is present for rendering
+                if (!recipe.id) {
+                    recipe.id = recipe.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().substring(0, 50) + '-' + Math.random().toString(36).substring(2, 10);
+                }
+                return recipe;
+            });
+            console.log(`Loaded ${allRecipes.length} recipes locally.`);
+
+            renderRecipeList(allRecipes);
+            displayLoadingState(false);
+        }
+
+        /**
+         * Displays a loading state overlay with a custom message.
+         * @param {boolean} isLoading - True to show loading, false to hide.
+         * @param {string} message - The message to display (optional).
+         */
+        function displayLoadingState(isLoading, message = 'PROCESSING_DATA.EXE...') {
+            if (listLoadingOverlay) {
+                listLoadingOverlay.querySelector('p').textContent = message;
+                listLoadingOverlay.style.display = isLoading ? 'flex' : 'none';
+            } else {
+                console.warn('Loading overlay element not found.');
+            }
+        }
+
+        /**
+         * Displays a message in the detail panel.
+         * @param {string} message - The message to display.
+         */
+        function displayMessage(message) {
+            initialMessage.style.display = 'none'; // Hide initial message
+            recipeDetailDiv.innerHTML = `
+                <div class="text-center text-gray-500 mt-20">
+                    <p class="text-xl">
+                        <span class="text-blue-500">//</span> ${message}
+                    </p>
+                </div>
+            `;
+        }
+
+        /**
+         * Renders the list of recipes in the left panel.
+         * @param {Array} recipes - The array of recipe objects to render.
+         */
+        function renderRecipeList(recipes) {
+            console.log(`Rendering ${recipes.length} recipes in the list.`);
+            recipeListDiv.innerHTML = ''; // Clear existing list of recipes
+
+            if (recipes.length === 0) {
+                recipeListDiv.innerHTML = '<p class="text-gray-500 mt-4">NO_MATCHING_RECIPES_FOUND. ADJUST_FILTERS.</p>';
+                displayMessage("NO_RECIPES_FOUND. PERHAPS_YOUR_SEARCH_IS_TOO_SPECIFIC?");
+                return;
+            }
+
+            recipes.forEach(recipe => {
+                const recipeItem = document.createElement('button');
+                recipeItem.className = 'recipe-list-item';
+                recipeItem.textContent = `> ${recipe.title.toUpperCase()}.TXT`;
+                recipeItem.dataset.id = recipe.id; // Store unique ID
+                recipeItem.addEventListener('click', () => {
+                    displayRecipeDetails(recipe.id);
+                    // Update active class
+                    if (currentActiveRecipeElement) {
+                        currentActiveRecipeElement.classList.remove('active');
+                    }
+                    recipeItem.classList.add('active');
+                    currentActiveRecipeElement = recipeItem;
+                });
+                recipeListDiv.appendChild(recipeItem);
+            });
+            // Select the first recipe by default if available
+            if (recipes.length > 0) {
+                initialMessage.style.display = 'none'; // Ensure initial message is hidden
+                displayRecipeDetails(recipes[0].id);
+                const firstListItem = recipeListDiv.querySelector('.recipe-list-item');
+                if (firstListItem) {
+                    firstListItem.classList.add('active');
+                    currentActiveRecipeElement = firstListItem;
+                }
+            } else {
+                displayMessage("NO_RECIPES_FOUND. PERHAPS_THE_DATABASE_IS_EMPTY?");
+            }
+        }
+
+        /**
+         * Displays the details of a specific recipe in the right panel.
+         * @param {string} recipeId - The ID of the recipe to display.
+         */
+        function displayRecipeDetails(recipeId) {
+            initialMessage.style.display = 'none'; // Hide initial message
+            recipeDetailDiv.innerHTML = `
+                <div class="loading-overlay">
+                    <div class="spinner"></div>
+                    <p>RETRIEVING_RECIPE_DATA.FETCH(${recipeId})... </p>
+                </div>
+            `;
+            console.log(`Fetching details for recipe ID: ${recipeId}`);
+
+            // Find the recipe in the local allRecipes array
+            const recipe = allRecipes.find(r => r.id === recipeId);
+
+            if (recipe) {
+                console.log(`Successfully loaded details for recipe: ${recipe.title}`);
+                recipeDetailDiv.innerHTML = `
+                    <div class="recipe-detail">
+                        <h2 class="text-blue-700">${recipe.title ? recipe.title.toUpperCase() : 'UNKNOWN_TITLE'}</h2>
+                        <p class="text-sm text-gray-700 mb-4">
+                            <span class="text-purple-500">//</span> CATEGORY: ${recipe.category ? recipe.category.toUpperCase() : 'UNKNOWN_TYPE'}
+                        </p>
+
+                        <h3><span class="text-red-500">//</span> INGREDIENTS.LIST:</h3>
+                        <ul class="list-disc ml-6">
+                            ${Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0
+                                ? recipe.ingredients.map(ing => `<li>${ing}</li>`).join('')
+                                : '<li>NO_INGREDIENTS_SPECIFIED. GOOD_LUCK.</li>'}
+                        </ul>
+
+                        <h3><span class="text-green-500">//</span> INSTRUCTIONS.SEQUENCE:</h3>
+                        <ol class="list-decimal ml-6">
+                            ${Array.isArray(recipe.instructions) && recipe.instructions.length > 0
+                                ? recipe.instructions.map(inst => `<li>${inst}</li>`).join('')
+                                : '<li>NO_INSTRUCTIONS_AVAILABLE. JUST_WING_IT.</li>'}
+                        </ol>
+
+                        <h3><span class="text-yellow-500">//</span> NOTES.LOG:</h3>
+                        <pre>${recipe.notes || 'NO_ADDITIONAL_NOTES. PERHAPS_THE_CREATOR_GAVE_UP.'}</pre>
+                    </div>
+                `;
+            } else {
+                displayMessage(`ERROR: RECIPE_ID_NOT_FOUND(${recipeId}). DATA_CORRUPTED_OR_MISSING.`);
+                console.warn(`Recipe with ID ${recipeId} not found in local data.`);
+            }
+        }
+
+        /**
+         * Filters and renders the recipe list based on search term and category.
+         */
+        function filterAndRenderRecipes() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedCategory = categoryFilter.value;
+
+            const filteredRecipes = initialRecipes.filter(recipe => { // Filter from initialRecipes
+                const matchesSearch = recipe.title.toLowerCase().includes(searchTerm);
+                const matchesCategory = selectedCategory === 'all' || (recipe.category && recipe.category.toLowerCase() === selectedCategory);
+                return matchesSearch && matchesCategory;
+            });
+            renderRecipeList(filteredRecipes);
+        }
+
+        // Event Listeners
+        searchInput.addEventListener('input', filterAndRenderRecipes);
+        categoryFilter.addEventListener('change', filterAndRenderRecipes);
+
+        // Initialize on window load
+        window.onload = initializeAndLoadRecipes;
+
+    </script>
+</body>
+</html>
